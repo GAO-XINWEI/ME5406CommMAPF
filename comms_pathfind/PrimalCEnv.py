@@ -219,7 +219,7 @@ if __name__ == '__main__':
     #           [-1, -1, -1, -1, -1, -1, -1]]
     n_agents = 8
     env = Primal2Env(num_agents=n_agents,
-                     observer=Primal2Observer(observation_size=5),
+                     observer=Primal2Observer(observation_size=7),
                      map_generator=maze_generator(env_size=(10, 11),
                                                   wall_components=(5, 10), obstacle_density=(0.2, 0.5)),
                      IsDiagonal=False, isOneShot=True)
@@ -239,10 +239,12 @@ if __name__ == '__main__':
          a8 = int(input())
          # a2 = a3 = a4 = a5 = a6 = a7 = a8 = a1
          movement = {1: a1, 2: a2, 3: a3, 4: a4, 5: a5, 6: a6, 7: a7, 8: a8}
-         env.step_all(movement)
+         msg = {1: a1, 2: a2, 3: a3, 4: a4, 5: a5, 6: a6, 7: a7, 8: a8}
+         env.step_all(movement_dict=movement, msg_dict=msg)
          obs = env._observe()
          env._render()
          print('(PrimalC(__main__))env.world.state', env.world.state)
          print('(PrimalC(__main__))env.world.goals_map', env.world.goals_map)
+         print('(PrimalC(__main__))env.world.state_comms', env.world.state_comms)
          print('(PrimalC(__main__))obs[1]', obs[1])
 

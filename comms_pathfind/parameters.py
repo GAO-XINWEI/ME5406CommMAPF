@@ -71,6 +71,7 @@ GIF_frames              = []
 
 # Joint variables 
 joint_actions           = [{} for _ in range(NUM_META_AGENTS)]
+joint_comms             = [{} for _ in range(NUM_META_AGENTS)]  # finished: add the communication joint
 joint_env               = [None for _ in range(NUM_META_AGENTS)]
 joint_observations      = [{} for _ in range(NUM_META_AGENTS)]
 joint_rewards           = [{} for _ in range(NUM_META_AGENTS)]

@@ -283,6 +283,13 @@ class World:
         # self.corridors = {}
         # self.get_corridors()
 
+        # Communicaiton channel
+        self.state_comms = np.zeros([self.state.shape[0], self.state.shape[1]], dtype=float)
+
+    def reset_comms(self):
+        # clear the message in the channel
+        self.state_comms = np.zeros([self.state.shape[0], self.state.shape[1]], dtype=float)
+
     def reset_agent(self):
         """
         remove all the agents (with their travel history) and goals in the env, rebase the env into a blank one
@@ -937,7 +944,7 @@ class MAPFEnv(gym.Env):
             raise ValueError("Invalid agent_id given")
         return self.obs_dict
 
-    def step_all(self, movement_dict):
+    def step_all(self, movement_dict, msg_dict=None):
         """
         Agents are forced to freeze self.frozen_steps steps if they are standing on their goals.
         The new goal will be generated at the FIRST step it remains on its goal.
@@ -954,15 +961,20 @@ class MAPFEnv(gym.Env):
         for agentID in range(1, self.num_agents + 1):
             if self.world.agents[agentID].freeze > self.frozen_steps:
                 self.world.agents[agentID].freeze = 0   # set frozen agents free if enough steps
-            if self.world.getDone(agentID) > 0 and self.isOneShot:
+            if self.world.getDone(agentID) > 0 and self.isOneShot: # todo: fix the freeze function here
                 movement_dict.update({agentID: 0})  # no action if Done
             if agentID not in movement_dict.keys() or self.world.agents[agentID].freeze:
                 movement_dict.update({agentID: 0})  # add completed action list; add freezed ones.
             else:
                 assert movement_dict[agentID] in list(range(5)) if self.IsDiagonal else list(range(9)), \
                     'action not in action space'
+        # complete the 'msg_dict'
+        for agentID in range(1, self.num_agents + 1):
+            if agentID not in msg_dict.keys():
+                msg_dict.update({agentID: 0.})
         if ENV_DEBUG_MODE:
             print('(step_all)movement_dict', movement_dict)
+            print('(step_all)msg_dict', msg_dict)
 
         # detect the state after action
         status_dict, newPos_dict = self.world.CheckCollideStatus(movement_dict)
@@ -1023,6 +1035,17 @@ class MAPFEnv(gym.Env):
         #     self.world._put_goals(put_goal_list)
         #     for frozen_agent in freeze_list:
         #         free_agents.remove(frozen_agent)
+
+
+        # Communication
+        #   after action, update all the message on the communication channel at the new position.
+        # Clear the communication channel
+        self.world.reset_comms()
+        # Update the communication channel
+        for agentID in range(1, self.num_agents + 1):
+            agent_pos = self.world.getPos(agentID)
+            self.world.state_comms[agent_pos[0]][agent_pos[1]] = msg_dict[agentID]
+
         return self._observe(), self.individual_rewards
 
     def give_moving_reward(self, agentID):
