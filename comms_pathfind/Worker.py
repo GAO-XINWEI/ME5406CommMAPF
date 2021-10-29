@@ -435,7 +435,7 @@ class Worker():
                 o = all_obs
                 step_count += 1
                 path_step += 1  
-        if saveGIF and SAVE_IL_GIF :
+        if saveGIF and SAVE_IL_GIF:
             make_gif(np.array(GIF_frames),
                                      '{}/episodeIL_{}.gif'.format(gifs_path,episode_count))       
         return result,count_finished
