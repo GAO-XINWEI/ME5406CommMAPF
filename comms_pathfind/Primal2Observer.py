@@ -38,7 +38,6 @@ class Primal2Observer(ObservationBuilder):
         return positions
 
     def _get(self, agent_id, all_astar_maps):
-        # todo: add communication channel in '_get()'
 
         start_time = time.time()
 
@@ -63,6 +62,9 @@ class Primal2Observer(ObservationBuilder):
         # deltax_map = np.zeros(obs_shape)
         # deltay_map = np.zeros(obs_shape)
         # blocking_map = np.zeros(obs_shape)
+
+        # PRIMALC maps
+        comms_map = np.zeros(obs_shape)
 
         time1 = time.time() - start_time
         start_time = time.time()
@@ -107,6 +109,11 @@ class Primal2Observer(ObservationBuilder):
                     visible_agents.append(self.world.state[i, j])
                     poss_map[i - top_left[0], j - top_left[1]] = 1
                     # updated_poss_map[i - top_left[0], j - top_left[1]] = self.world.state[i, j]
+
+                # Communicaiton channel
+                if self.world.state_comms[i, j] != 0:
+                    # the message that agent recieved
+                    comms_map[i - top_left[0], j - top_left[1]] = self.world.state_comms[i, j]
 
                 # we can keep this map even if on goal,
                 # since observation is computed after the refresh of new distance map
@@ -174,6 +181,8 @@ class Primal2Observer(ObservationBuilder):
         #             else:
         #                 pass
 
+
+
         time5 = time.time() - start_time
         start_time = time.time()
 
@@ -197,11 +206,13 @@ class Primal2Observer(ObservationBuilder):
         #                   deltay_map])  # ,updated_poss_map,updated_goals_map])
         # state = np.concatenate((state, astar_map), axis=0)
 
-        state = np.array([poss_map, goal_map, goals_map, obs_map])  # ,updated_poss_map,updated_goals_map])
+        state = np.array([poss_map, goal_map, goals_map, obs_map, comms_map])  # ,updated_poss_map,updated_goals_map])
+        # todo: needs to be flatten if self-attention input.
+        # message = comms_map
 
         time6 = time.time() - start_time
         start_time = time.time()
-        # todo: delete time array
+
         return state, [dx, dy, mag], np.array([time1, time2, time3, time4, time5, time6])
 
     def get_many(self, handles=None):
@@ -215,8 +226,8 @@ class Primal2Observer(ObservationBuilder):
         times = np.zeros((1, 6))
 
         for h in handles:
-            # todo: add communication channel in 'observations'
             state, vector, time = self._get(h, all_astar_maps)
+            # observations[h] = [state, vector]
             observations[h] = [state, vector]
             times += time
         if self.printTime:

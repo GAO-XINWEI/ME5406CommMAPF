@@ -17,7 +17,7 @@ from parameters import *
 
 def make_gif(images, fname):
     gif = imageio.mimwrite(fname, images, subrectangles=True)
-    print("wrote gif")
+    print("(make_gif)wrote gif")
     return gif
 
 
@@ -283,6 +283,13 @@ class World:
         # self.corridors = {}
         # self.get_corridors()
 
+        # Communicaiton channel
+        self.state_comms = np.zeros([self.state.shape[0], self.state.shape[1]], dtype=float)
+
+    def reset_comms(self):
+        # clear the message in the channel
+        self.state_comms = np.zeros([self.state.shape[0], self.state.shape[1]], dtype=float)
+
     def reset_agent(self):
         """
         remove all the agents (with their travel history) and goals in the env, rebase the env into a blank one
@@ -414,8 +421,8 @@ class World:
     #             if positions[num] is not None and positions[num] not in self.visited:
     #                 self.visit(positions[num][0], positions[num][1], corridor_id)
 
-    # check available state around, return in list.
     def blank_env_valid_neighbor(self, i, j):
+        # check available state around, return in list.
         possible_positions = [None, None, None, None]
         move = [[0, 1], [1, 0], [-1, 0], [0, -1]]
         if self.state[i, j] == -1:
@@ -938,92 +945,7 @@ class MAPFEnv(gym.Env):
         return self.obs_dict
 
     def step_all(self, movement_dict):
-        """
-        Agents are forced to freeze self.frozen_steps steps if they are standing on their goals.
-        The new goal will be generated at the FIRST step it remains on its goal.
-
-        :param movement_dict: {agentID_starting_from_1: action:int 0-4, ...}
-                              unmentioned agent will be considered as taking standing still
-        :return: obs_of_all:dict, reward_of_single_step:dict
-        """
-
-        # todo: freeze as PRIMAL1.
-        # todo: Cancel the regenerating. one shot.
-
-        # complete 'movement_dict'
-        for agentID in range(1, self.num_agents + 1):
-            if self.world.agents[agentID].freeze > self.frozen_steps:
-                self.world.agents[agentID].freeze = 0   # set frozen agents free if enough steps
-            if self.world.getDone(agentID) > 0 and self.isOneShot:
-                movement_dict.update({agentID: 0})  # no action if Done
-            if agentID not in movement_dict.keys() or self.world.agents[agentID].freeze:
-                movement_dict.update({agentID: 0})  # add completed action list; add freezed ones.
-            else:
-                assert movement_dict[agentID] in list(range(5)) if self.IsDiagonal else list(range(9)), \
-                    'action not in action space'
-        if ENV_DEBUG_MODE:
-            print('(step_all)movement_dict', movement_dict)
-
-        # detect the state after action
-        status_dict, newPos_dict = self.world.CheckCollideStatus(movement_dict)
-        if ENV_DEBUG_MODE:
-            print('(step_all)status_dict', status_dict)
-            print('(step_all)newPos_dict', newPos_dict)
-
-        self.world.state[self.world.state > 0] = 0  # remove agents in the map for repose agents later
-        put_goal_list = []
-        freeze_list = []
-        for agentID in range(1, self.num_agents + 1):
-            # # whether env has done
-            # if self.isOneShot and self.world.getDone(agentID) > 0:
-            #     continue
-            # self.done = False
-
-            # pose agent at new position
-            newPos = newPos_dict[agentID]
-            # if self.isOneShot:
-            #     if status_dict[agentID] not in [1, 2]:
-            #         self.world.state[newPos] = agentID
-            #     # else: don't place agents on state map
-            # else:
-            #     self.world.state[newPos] = agentID
-
-            # if status_dict[agentID] not in [1, 2]:
-            #     self.world.state[newPos] = agentID
-            self.world.state[newPos] = agentID
-            # agent state record
-            self.world.agents[agentID].move(newPos, status_dict[agentID])
-
-            # agent reward
-            self.give_moving_reward(agentID)
-
-            if status_dict[agentID] == 1:   # todo: check this in the future(is one shot? freezed?)
-                if not self.isOneShot:
-                    if self.world.agents[agentID].freeze == 0:
-                        put_goal_list.append(agentID)
-                    if self.world.agents[agentID].action_history[-1] == 0:  # standing still on goal
-                        freeze_list.append(agentID)
-                    self.world.agents[agentID].freeze += 1
-                else:
-                    if self.world.state[newPos] == 0:
-                        self.world.state[newPos] = 0
-                    self.world.agents[agentID].status = 2  # status=2 means done and removed from the env
-                    self.world.goals_map[newPos] = 0
-
-        # whether env is done
-        self.done = True
-        for agentID in range(1, self.num_agents + 1):
-            # whether env has done
-            if self.isOneShot and self.world.getDone(agentID) > 0:
-                continue
-            self.done = False
-
-        # all of agents need to keep communicating with others
-        # if put_goal_list and not self.isOneShot:
-        #     self.world._put_goals(put_goal_list)
-        #     for frozen_agent in freeze_list:
-        #         free_agents.remove(frozen_agent)
-        return self._observe(), self.individual_rewards
+        raise NotImplementedError
 
     def give_moving_reward(self, agentID):
         raise NotImplementedError
@@ -1046,7 +968,7 @@ class MAPFEnv(gym.Env):
                                             inflation=inflation, time_limit=time_limit)
         except OutOfTimeError:
             # M* timed out
-            print("timeout")
+            print("(expert_until_first_goal)timeout")
         except NoSolutionError:
             print("nosol????")
         return mstar_path
@@ -1125,7 +1047,7 @@ class MAPFEnv(gym.Env):
                             start = j
                             scanning = True
                         if (j == world_shape[1] - 1 or state_map[i, j] == -1) and scanning:
-                            end = j + 1 if j == world_shape[1] - 1 else j
+                            end = j + 1 if j == world_shape[1] else j
                             scanning = False
                             write = True
                         if write:
@@ -1171,11 +1093,24 @@ class MAPFEnv(gym.Env):
             result = self.viewer.render(return_rgb_array=1)
             return result
 
-        # todo: where is the wall?
-        # todo: worry direction now
         state = self.world.state
         pos = self.getPositions()
         goals = self.getGoals()
+
+        # Patch for render: 90 degree rotation
+        if True:
+            state = state[::-1].transpose()
+            num_agents = len(goals)
+            _pos = {}
+            _goals = {}
+            for agent in range(1, num_agents + 1):
+                pi, pj = pos[agent]
+                gi, gj = goals[agent]
+                _pos[agent] = pj, state.shape[0] - pi - 1
+                _goals[agent] = gj, state.shape[0] - gi - 1
+            pos = _pos
+            goals = _goals
+
         frame = painter(state, pos, goals)
         return frame
 

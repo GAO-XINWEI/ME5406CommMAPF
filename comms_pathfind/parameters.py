@@ -17,29 +17,29 @@ OBS_SIZE                = 11   # the size of the FOV grid to apply to each agent
 NUM_FUTURE_STEPS        = 0
 
 # environment parameters
-ENVIRONMENT_SIZE        = (10, 70)  # the total size of the environment (length of one side) , Starting Point of Curriculum Only
+ENVIRONMENT_SIZE        = (10, 70) if not ENV_DEBUG_MODE else (10, 11)  # the total size of the environment (length of one side) , Starting Point of Curriculum Only
 WALL_COMPONENTS         = (3, 21)    # Starting Params of Curriculum = TRUE
-OBSTACLE_DENSITY        = (0.2, 0.7)  # range of densities   Starting Params of Curriculum = TRUE
+OBSTACLE_DENSITY        = (0.2, 0.7) if not ENV_DEBUG_MODE else (.15, .20)  # range of densities   Starting Params of Curriculum = TRUE
 
 DIAG_MVMT               = False  # Diagonal movements allowed?
 a_size                  = 5 + int(DIAG_MVMT) * 4
-NUM_META_AGENTS         = 2
+NUM_META_AGENTS         = 1
 NUM_IL_META_AGENTS      = 1
 
-NUM_THREADS             = 1 # int(multiprocessing.cpu_count() / (2 * NUM_META_AGENTS))
-NUM_BUFFERS             = 1  # NO EXPERIENCE REPLAY int(NUM_THREADS / 2)
+NUM_THREADS             = 8 # int(multiprocessing.cpu_count() / (2 * NUM_META_AGENTS))
+NUM_BUFFERS             = 1 # NO EXPERIENCE REPLAY int(NUM_THREADS / 2)
 
 # training parameters
 SUMMARY_WINDOW          = 10
 load_model              = False
 RESET_TRAINER           = False
-training_version        = 'log/astar3_continuous_0.5IL_ray2'
+training_version        = 'log/astar3_continuous_0.5IL_ray2_00'
 model_path              = 'model_' + training_version
 gifs_path               = 'gifs_' + training_version
 train_path              = 'train_' + training_version
-OUTPUT_GIFS             = False  # Only for RL gifs
+OUTPUT_GIFS             = True  # Only for RL gifs
 GIFS_FREQUENCY_RL       = 512
-OUTPUT_IL_GIFS          = False
+OUTPUT_IL_GIFS          = True
 IL_GIF_PROB             = 0.
 
 
@@ -55,6 +55,7 @@ EPISODE_START           = episode_count
 TRAINING                = True
 EPISODE_SAMPLES         = EXPERIENCE_BUFFER_SIZE  # 64
 GLOBAL_NET_SCOPE        = 'global'
+LOCAL_NET_SCOPE         = 'local'
 swarm_reward            = [0] * NUM_META_AGENTS
 swarm_targets           = [0] * NUM_META_AGENTS
 
@@ -75,6 +76,12 @@ joint_env               = [None for _ in range(NUM_META_AGENTS)]
 joint_observations      = [{} for _ in range(NUM_META_AGENTS)]
 joint_rewards           = [{} for _ in range(NUM_META_AGENTS)]
 joint_done              = [{} for _ in range(NUM_META_AGENTS)]
+# PRIMAL1
+joint_blocking          = [{} for _ in range(NUM_META_AGENTS)]
+# PRIMALC
+joint_meangoal          = [{} for _ in range(NUM_META_AGENTS)]
+joint_comms             = [{} for _ in range(NUM_META_AGENTS)]
+joint_voting            = [{} for _ in range(NUM_META_AGENTS)]
 
 
 env_params              = [[ [WALL_COMPONENTS[0], WALL_COMPONENTS[1]] , [OBSTACLE_DENSITY[0],OBSTACLE_DENSITY[1]]]  for _ in range(NUM_META_AGENTS)]
