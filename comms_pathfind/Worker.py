@@ -140,9 +140,9 @@ class Worker():
         
         if self.metaAgentID < NUM_IL_META_AGENTS:
             assert(1==0)
-            #print("THIS CODE SHOULD NOT TRIGGER")
-            self.is_imitation = True
-            self.imitation_learning_only()
+            # print("THIS CODE SHOULD NOT TRIGGER")
+            # self.is_imitation = True
+            # self.imitation_learning_only()
 
         global episode_lengths, episode_mean_values, episode_invalid_ops, episode_stop_ops, episode_rewards, episode_finishes
 

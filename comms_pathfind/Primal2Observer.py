@@ -137,6 +137,37 @@ class Primal2Observer(ObservationBuilder):
         if mag > 60:
             mag = 60
 
+        '''observe mean goal'''
+        mean_goals = []
+        for agent in visible_agents:
+            other_position = self.world.getPos(agent)
+            other_goal = self.world.getGoal(agent)
+
+            other_dx = other_goal[0] - other_position[0]
+            other_dy = other_goal[1] - other_position[1]
+            other_mag = (other_dx ** 2 + other_dy ** 2) ** .5
+            # print(other_dx, other_dy, other_mag)
+            if other_mag:
+                mean_goals.append([other_dx / other_mag, other_dy / other_mag])
+            else:
+                mean_goals.append([0., 0.])
+        if mean_goals == []:
+            mean_goal = [0., 0.]
+        else:
+            mean_goal = np.mean(mean_goals, axis=0)
+            other_mag = (mean_goal[0] ** 2 + mean_goal[1] ** 2) ** .5
+
+            if other_mag:
+                # print(other_mag)
+                mean_goal = mean_goal / other_mag
+            else:
+                mean_goal = [0., 0.]
+
+        if ENV_DEBUG_MODE:
+            if agent_id == 1:
+                print('(Primal2Observer(_get))mean_goals', mean_goals)
+                print('(Primal2Observer(_get))mean_goal', mean_goal)
+
         time4 = time.time() - start_time
         start_time = time.time()
 
@@ -174,7 +205,11 @@ class Primal2Observer(ObservationBuilder):
         #                     corridor_id]['DeltaX'][(end_point_pos[0], end_point_pos[1])])  # / max(mag, 1)
         #                 deltay_map[position[0] - top_left[0], position[1] - top_left[1]] = (self.world.corridors[
         #                     corridor_id]['DeltaY'][(end_point_pos[0], end_point_pos[1])])  # / max(mag, 1)
-        #                 blocking_map[position[0] - top_left[0], position[1] - top_left[1]] = self.get_blocking(
+        #                 blocking_map[position[0] - top_left[0], posit
+        #         #     for j in range(self.observation_size):
+        #         #         dist_mag = pathlength_map[i, j]
+        #         #         if dist_mag > 0:
+        #         #             index = distance_list.index(dist_mag)ion[1] - top_left[1]] = self.get_blocking(
         #                     corridor_id,
         #                     1, agent_id,
         #                     2)
@@ -182,9 +217,9 @@ class Primal2Observer(ObservationBuilder):
         #                 pass
 
 
-
         time5 = time.time() - start_time
         start_time = time.time()
+
 
         # pathlength_map
         # free_spaces = list(np.argwhere(pathlength_map > 0))
@@ -196,10 +231,6 @@ class Primal2Observer(ObservationBuilder):
         # distance_list.sort()
         # step_size = (1 / len(distance_list))
         # for i in range(self.observation_size):
-        #     for j in range(self.observation_size):
-        #         dist_mag = pathlength_map[i, j]
-        #         if dist_mag > 0:
-        #             index = distance_list.index(dist_mag)
         #             pathlength_map[i, j] = (index + 1) * step_size
 
         # state = np.array([poss_map, goal_map, goals_map, obs_map, pathlength_map, blocking_map, deltax_map,
@@ -213,7 +244,7 @@ class Primal2Observer(ObservationBuilder):
         time6 = time.time() - start_time
         start_time = time.time()
 
-        return state, [dx, dy, mag], np.array([time1, time2, time3, time4, time5, time6])
+        return state, [dx, dy, mag], mean_goal, np.array([time1, time2, time3, time4, time5, time6])
 
     def get_many(self, handles=None):
         observations = {}
@@ -226,9 +257,9 @@ class Primal2Observer(ObservationBuilder):
         times = np.zeros((1, 6))
 
         for h in handles:
-            state, vector, time = self._get(h, all_astar_maps)
+            state, vector, mean_goal, time = self._get(h, all_astar_maps)
             # observations[h] = [state, vector]
-            observations[h] = [state, vector]
+            observations[h] = [state, vector, mean_goal]
             times += time
         if self.printTime:
             print(times)
