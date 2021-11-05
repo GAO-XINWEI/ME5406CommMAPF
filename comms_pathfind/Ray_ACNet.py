@@ -17,7 +17,7 @@ def normalized_columns_initializer(std=1.0):
     return _initializer
 
 class ACNet:
-    def __init__(self, scope, a_size, trainer,TRAINING,GRID_SIZE,GLOBAL_NET_SCOPE):
+    def __init__(self, scope, a_size, trainer,TRAINING,GRID_SIZE,GLOBAL_NET_SCOPE,GLOBAL_NETWORK=False):
         with tf.variable_scope(str(scope)+'/qvalues'):
             #The input size may require more work to fit the interface.
             self.inputs = tf.placeholder(shape=[None,5,GRID_SIZE,GRID_SIZE], dtype=tf.float32)
