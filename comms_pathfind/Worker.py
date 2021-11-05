@@ -34,7 +34,7 @@ class Worker():
         self.perf_metrics = None
         self.allGradients = []
 
-    def calculateImitationGradient(self, rollout, episode_count):
+    def calculateImitationGradient(self, rollout, episode_count): # todo: check rollout
         rollout = np.array(rollout, dtype=object)
         # we calculate the loss differently for imitation
         # if imitation=True the rollout is assumed to have different dimensions:
@@ -65,9 +65,11 @@ class Worker():
     def calculateGradient(self, rollout, bootstrap_value, episode_count, rnn_state0):
         # ([s,a,r,s1,v[0,0]])
 
-        rollout = np.array(rollout, dtype=object)
+        rollout = np.array(rollout, dtype=object) # todo: meangoal, blocking
         observations = rollout[:, 0]
-        goals = rollout[:, -3]
+        goals = rollout[:, -5]
+        target_mean_goal = rollout[:, -3]
+        target_blocking = rollout[:, -4]
         actions = rollout[:, 1]
         rewards = rollout[:, 2]
         values = rollout[:, 4]
@@ -93,6 +95,8 @@ class Worker():
             self.local_AC.inputs     : np.stack(observations),
             self.local_AC.goal_pos   : np.stack(goals),
             self.local_AC.actions    : actions,
+            self.local_AC.target_meangoal: target_mean_goal,
+            self.local_AC.target_blocking: target_blocking,
             self.local_AC.train_valid: np.stack(valids),
             self.local_AC.advantages : advantages,
             self.local_AC.train_value: train_value,
@@ -102,16 +106,19 @@ class Worker():
             self.local_AC.train_valids: np.vstack(train_policy)
         }
 
-        v_l, p_l, valid_l, e_l, g_n, v_n, grads = self.sess.run([self.local_AC.value_loss,
+        v_l, p_l, valid_l, e_l, g_n, v_n, blocking_l, meangoal_l, message_l, grads = self.sess.run([self.local_AC.value_loss,
                                                                 self.local_AC.policy_loss,
                                                                 self.local_AC.valid_loss,
                                                                 self.local_AC.entropy,
                                                                 self.local_AC.grad_norms,
                                                                 self.local_AC.var_norms,
+                                                                self.local_AC.blocking_l,
+                                                                self.local_AC.meangoal_loss,
+                                                                self.local_AC.message_loss,
                                                                 self.local_AC.grads],
                                                                 feed_dict=feed_dict)
 
-        return [v_l, p_l, valid_l, e_l, g_n, v_n], grads
+        return [v_l, p_l, valid_l, e_l, g_n, v_n, blocking_l, meangoal_l, message_l], grads
 
 
 
@@ -140,9 +147,9 @@ class Worker():
         
         if self.metaAgentID < NUM_IL_META_AGENTS:
             assert(1==0)
-            # print("THIS CODE SHOULD NOT TRIGGER")
-            # self.is_imitation = True
-            # self.imitation_learning_only()
+            #print("THIS CODE SHOULD NOT TRIGGER")
+            self.is_imitation = True
+            self.imitation_learning_only()
 
         global episode_lengths, episode_mean_values, episode_invalid_ops, episode_stop_ops, episode_rewards, episode_finishes
 
@@ -258,7 +265,7 @@ class Worker():
                         self.synchronize() 
                         # Append to Appropriate buffers 
                         if not skipping_state and not agent_done:
-                            episode_buffer.append([s[0], a, joint_rewards[self.metaAgentID][self.agentID] , s1, v[0, 0], train_valid, s[1], train_val,train_policy])
+                            episode_buffer.append([s[0], a, joint_rewards[self.metaAgentID][self.agentID] , s1, v[0, 0], train_valid, s[1], target_block, target_mg, train_val,train_policy])
                             episode_values.append(v[0, 0])
                         episode_reward += r
                         episode_step_count += 1
