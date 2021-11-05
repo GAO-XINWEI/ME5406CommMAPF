@@ -38,6 +38,8 @@ class Primal2Env(MAPFEnv):
         self.fresh = True
         self.done = False
         self.done_asking = False
+        for agentID in range(1,self.num_agents):
+            self.individual_blocking[agentID] = self.get_blocking_num(agentID)
 
         if self.viewer is not None:
             self.viewer = None
@@ -110,15 +112,12 @@ class Primal2Env(MAPFEnv):
 
             if status_dict[agentID] == 1:   # todo: check this in the future(is one shot? freezed?)
                 if self.isOneShot:
-#                     if self.world.agents[agentID].freeze == 0:
-#                         put_goal_list.append(agentID)
+                    # if self.world.agents[agentID].freeze == 0:
+                    #    put_goal_list.append(agentID)
                     if self.world.agents[agentID].action_history[-1] == 0:  # standing still on goal
                         freeze_list.append(agentID)
                     self.world.agents[agentID].freeze += 1
                     print('OneShot',self.world.agents[agentID].freeze)
-
-                	
-                	
                 else:
                     if self.world.state[newPos] == 0:
                         self.world.state[newPos] = 0
@@ -205,9 +204,9 @@ class Primal2Env(MAPFEnv):
 
         # if num_blocking is not 0, blocking is True
         if num_blocking > 0:
-            self.individual_blocking[agent_id] = True
+            self.individual_blocking[agent_id] = 1
         else:
-            self.individual_blocking[agent_id] = False
+            self.individual_blocking[agent_id] = 0
         return num_blocking
 
     def check_on_goal(self,agent_id):

@@ -978,7 +978,7 @@ class MAPFEnv(gym.Env):
         self.isStandingOnGoal = {i: False for i in range(1, self.num_agents + 1)}
 
         self.individual_rewards = {i: 0 for i in range(1, self.num_agents + 1)}
-        self.individual_blocking = {i: False for i in range(1, self.num_agents + 1)}
+        self.individual_blocking = {i: 0 for i in range(1, self.num_agents + 1)}
         self.done = False
         self.GIF_frame = []
         if IsDiagonal:
