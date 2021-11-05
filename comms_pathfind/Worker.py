@@ -34,25 +34,24 @@ class Worker():
         self.perf_metrics = None
         self.allGradients = []
 
-    def calculateImitationGradient(self, rollout, episode_count): # todo: check rollout
+    def calculateImitationGradient(self, rollout, episode_count):  # todo: check rollout
         rollout = np.array(rollout, dtype=object)
         # we calculate the loss differently for imitation
         # if imitation=True the rollout is assumed to have different dimensions:
         # [o[0],o[1],optimal_actions]
-        
+
         temp_actions = np.stack(rollout[:, 2])
         rnn_state = self.local_AC.state_init
-        feed_dict = {self.global_step             : episode_count,
-                     self.local_AC.inputs         : np.stack(rollout[:, 0]),
-                     self.local_AC.goal_pos       : np.stack(rollout[:, 1]),                     
+        feed_dict = {self.global_step: episode_count,
+                     self.local_AC.inputs: np.stack(rollout[:, 0]),
+                     self.local_AC.goal_pos: np.stack(rollout[:, 1]),
                      self.local_AC.optimal_actions: np.stack(rollout[:, 2]),
-                     self.local_AC.state_in[0]    : rnn_state[0],
-                     self.local_AC.state_in[1]    : rnn_state[1],
+                     self.local_AC.state_in[0]: rnn_state[0],
+                     self.local_AC.state_in[1]: rnn_state[1],
                      self.local_AC.train_imitation: (rollout[:, 3]),
-                     self.local_AC.target_v       : np.stack(temp_actions),
-                     self.local_AC.train_value    : temp_actions,
+                     self.local_AC.target_v: np.stack(temp_actions),
+                     self.local_AC.train_value: temp_actions,
                      }
-
 
         v_l, i_l, i_grads = self.sess.run([self.local_AC.value_loss,
                                            self.local_AC.imitation_loss,
@@ -144,12 +143,11 @@ class Worker():
     
     
     def run_episode_multithreaded(self, episode_count, coord):
-        
         if self.metaAgentID < NUM_IL_META_AGENTS:
             assert(1==0)
-            #print("THIS CODE SHOULD NOT TRIGGER")
-            self.is_imitation = True
-            self.imitation_learning_only()
+            # print("THIS CODE SHOULD NOT TRIGGER")
+            # self.is_imitation = True
+            # self.imitation_learning_only()
 
         global episode_lengths, episode_mean_values, episode_invalid_ops, episode_stop_ops, episode_rewards, episode_finishes
 
@@ -169,7 +167,7 @@ class Worker():
 
                 # Get Information For Each Agent 
                 validActions = self.env.listValidActions(self.agentID, joint_observations[self.metaAgentID][self.agentID])
-                
+
                 s = joint_observations[self.metaAgentID][self.agentID]
 
                 rnn_state = self.local_AC.state_init
@@ -205,19 +203,21 @@ class Worker():
                     while not self.env.finished:
                         if not agent_done:
                             # todo: add multi-output here
-                            msg_dist = 0
-                            a_dist, v, rnn_state = self.sess.run([self.local_AC.policy,
-                                                         self.local_AC.value,
-                                                         self.local_AC.state_out],
-                                                                 # todo: feed the message(last time step) here
-                                                        feed_dict={self.local_AC.inputs     : [s[0]],  # state
-                                                                   self.local_AC.goal_pos   : [s[1]],  # goal vector
-                                                                   self.local_AC.state_in[0]: rnn_state[0],
-                                                                   self.local_AC.state_in[1]: rnn_state[1]})
+                            a_dist, v, rnn_state,\
+                            blocking, mean_goal, msg = self.sess.run([self.local_AC.policy,
+                                                                      self.local_AC.value,
+                                                                      self.local_AC.state_out,
+                                                                      self.local_AC.blocking,
+                                                                      self.local_AC.mean_goal,
+                                                                      self.local_AC.message],
+                                                                     feed_dict={self.local_AC.inputs     : [s[0]],
+                                                                                self.local_AC.goal_pos   : [s[1]],
+                                                                                self.local_AC.state_in[0]: rnn_state[0],
+                                                                                self.local_AC.state_in[1]: rnn_state[1]})
 
                             skipping_state = False
                             train_policy = train_val = 1 
-                       
+
                         if not skipping_state and not agent_done:
                             if not (np.argmax(a_dist.flatten()) in validActions):
                                 episode_inv_count += 1
@@ -234,7 +234,7 @@ class Worker():
                                 episode_stop_count += 1
 
                             # public the message here 'joint_comms'
-                            joint_comms[self.metaAgentID][self.agentID] = msg_dist
+                            joint_comms[self.metaAgentID][self.agentID] = msg
 
                         # Make A Single Agent Gather All Information
 
@@ -264,8 +264,8 @@ class Worker():
                         
                         self.synchronize() 
                         # Append to Appropriate buffers 
-                        if not skipping_state and not agent_done:
-                            episode_buffer.append([s[0], a, joint_rewards[self.metaAgentID][self.agentID] , s1, v[0, 0], train_valid, s[1], target_block, target_mg, train_val,train_policy])
+                        if not skipping_state and not agent_done: # todo: add the message blocking and meangoal
+                            episode_buffer.append([s[0], a, joint_rewards[self.metaAgentID][self.agentID] , s1, v[0, 0], train_valid, s[1], train_val,train_policy])
                             episode_values.append(v[0, 0])
                         episode_reward += r
                         episode_step_count += 1
@@ -289,15 +289,14 @@ class Worker():
                                 targets_done   += 1
 
                             else:
+                                # todo: add here
                                 s1Value = self.sess.run(self.local_AC.value,
-                                                   feed_dict={self.local_AC.inputs     : np.array([s[0]]),
-                                                              self.local_AC.goal_pos   : [s[1]],
-                                                              self.local_AC.state_in[0]: rnn_state[0],
-                                                              self.local_AC.state_in[1]: rnn_state[1]})[0, 0]
-
+                                                        feed_dict={self.local_AC.inputs     : np.array([s[0]]),
+                                                                   self.local_AC.goal_pos   : [s[1]],
+                                                                   self.local_AC.state_in[0]: rnn_state[0],
+                                                                   self.local_AC.state_in[1]: rnn_state[1]})[0, 0]
 
                             self.loss_metrics, grads = self.calculateGradient(train_buffer, s1Value, episode_count, rnn_state0)
-
                             self.allGradients.append(grads)
 
                             rnn_state0 = rnn_state
@@ -426,7 +425,7 @@ class Worker():
                             print(goal_buffer) 
                             actions[agent_id] = dir2action(diff)                                
                 all_obs, _ = self.env.step_all(actions)
-                for i in range(self.num_workers) :
+                for i in range(self.num_workers):
                     agent_id = i+1
                     positions.append(self.env.world.getPos(agent_id)) 
                     goals.append(self.env.world.getGoal(agent_id))                    
