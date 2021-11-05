@@ -21,7 +21,7 @@ class Primal2Env(MAPFEnv):
     metadata = {"render.modes": ["human", "ansi"]}
 
     def __init__(self, observer, map_generator, num_agents=None,
-                 IsDiagonal=False, frozen_steps=0, isOneShot=True):
+                 IsDiagonal=False, frozen_steps=2, isOneShot=True):
         super(Primal2Env, self).__init__(observer=observer, map_generator=map_generator,
                                          num_agents=num_agents,
                                          IsDiagonal=IsDiagonal, frozen_steps=frozen_steps, isOneShot=isOneShot)
@@ -59,7 +59,7 @@ class Primal2Env(MAPFEnv):
         for agentID in range(1, self.num_agents + 1):
             if self.world.agents[agentID].freeze > self.frozen_steps:
                 self.world.agents[agentID].freeze = 0   # set frozen agents free if enough steps
-            if self.world.getDone(agentID) > 0 and self.isOneShot: # todo: fix the freeze function here
+            if self.world.agents[agentID].freeze != 0 and self.isOneShot: # todo: fix the freeze function here
                 movement_dict.update({agentID: 0})  # no action if Done
             if agentID not in movement_dict.keys() or self.world.agents[agentID].freeze:
                 movement_dict.update({agentID: 0})  # add completed action list; add freezed ones.
@@ -86,46 +86,31 @@ class Primal2Env(MAPFEnv):
         put_goal_list = []
         freeze_list = []
         for agentID in range(1, self.num_agents + 1):
-            # # whether env has done
-            # if self.isOneShot and self.world.getDone(agentID) > 0:
-            #     continue
-            # self.done = False
-
-            # pose agent at new position
             newPos = newPos_dict[agentID]
-            # if self.isOneShot:
-            #     if status_dict[agentID] not in [1, 2]:
-            #         self.world.state[newPos] = agentID
-            #     # else: don't place agents on state map
-            # else:
-            #     self.world.state[newPos] = agentID
-
-            # if status_dict[agentID] not in [1, 2]:
-            #     self.world.state[newPos] = agentID
             self.world.state[newPos] = agentID
             # agent state record
             self.world.agents[agentID].move(newPos, status_dict[agentID])
 
-            # # agent reward
-            # self.give_moving_reward(agentID)
+            # agent reward
+            self.give_moving_reward(agentID)
 
             if status_dict[agentID] == 1:   # todo: check this in the future(is one shot? freezed?)
-                if not self.isOneShot:
-                    if self.world.agents[agentID].freeze == 0:
-                        put_goal_list.append(agentID)
+                if self.isOneShot:
+#                     if self.world.agents[agentID].freeze == 0:
+#                         put_goal_list.append(agentID)
                     if self.world.agents[agentID].action_history[-1] == 0:  # standing still on goal
                         freeze_list.append(agentID)
                     self.world.agents[agentID].freeze += 1
+                    print(self.world.agents[agentID].freeze)
                 else:
                     if self.world.state[newPos] == 0:
                         self.world.state[newPos] = 0
                     self.world.agents[agentID].status = 2  # status=2 means done and removed from the env
                     self.world.goals_map[newPos] = 0
-
-        # agent reward
-        for agentID in range(1, self.num_agents + 1):
-            self.give_moving_reward(agentID, movement_dict[agentID])
-
+                    print('remove the goal? should not appear!')
+                    print(self.world.agents[agentID].freeze)
+                    
+        
         # whether env is done
         self.done = True
         for agentID in range(1, self.num_agents + 1):
@@ -152,106 +137,27 @@ class Primal2Env(MAPFEnv):
 
         return self._observe(), self.individual_rewards
 
-    def astar(self,world,start,goal,robots=[]):
-        '''code from PRIMAL1 for blocking'''
-        '''robots is a list of robots to add to the world'''
-        for (i,j) in robots:
-            world[i,j]=1
-        try:
-            path=od_mstar.find_path(world,[start],[goal],1,5)
-        except NoSolutionError:
-            path=None
-        for (i,j) in robots:
-            world[i,j]=0
-        return path
-
-    def get_blocking_num(self,agent_id):
-        '''code from PRIMAL1 for blocking'''
-        '''calculates how many robots the agent is preventing from reaching goal
-        and returns the necessary penalty'''
-        #accumulate visible robots
-        other_robots=[]
-        other_locations=[]
-        inflation=10
-        top_left=(self.world.getPos(agent_id)[0]-self.observer.observation_size//2,self.world.getPos(agent_id)[1]-self.observer.observation_size//2)
-        bottom_right=(top_left[0]+self.observer.observation_size,top_left[1]+self.observer.observation_size)
-        for agent in range(1,self.num_agents):
-            if agent==agent_id: continue
-            x,y=self.world.getPos(agent)
-            if x<top_left[0] or x>=bottom_right[0] or y>=bottom_right[1] or y<top_left[1]:
-                continue
-            other_robots.append(agent)
-            other_locations.append((x,y))
-        num_blocking=0
-        world=self.getObstacleMap()
-        for agent in other_robots:
-            other_locations.remove(self.world.getPos(agent))
-            #before removing
-            path_before=self.astar(world,self.world.getPos(agent),self.world.getGoal(agent),
-                                   robots=other_locations+[self.world.getPos(agent_id)])
-            #after removing
-            path_after=self.astar(world,self.world.getPos(agent),self.world.getGoal(agent),
-                                   robots=other_locations)
-            other_locations.append(self.world.getPos(agent))
-            if (path_before is None and path_after is None):continue
-            if (path_before is not None and path_after is None):continue
-            if (path_before is None and path_after is not None)\
-                or len(path_before)>len(path_after)+inflation:
-                num_blocking+=1
-
-        # if num_blocking is not 0, blocking is True
-        if num_blocking > 0:
-            self.individual_blocking[agent_id] = True
-        else:
-            self.individual_blocking[agent_id] = False
-        return num_blocking
-
-    def check_on_goal(self,agent_id):
-        pos = self.world.getPos(agent_id)
-        goal = self.world.getGoal(agent_id)
-        return True if pos == goal else False
-
-    def give_moving_reward(self, agentID, movement):
+    def give_moving_reward(self, agentID):
         """
         WARNING: ONLY CALL THIS AFTER MOVING AGENTS!
         Only the moving agent that encounters the collision is penalized! Standing still agents
         never get punishment.
-            # 2:  (only in oneShot mode) action not executed, agents has done its target and has been removed from the env.
-            1:  action executed, and agents standing on its goal.
-            0:  action executed
-            -1: collision with env (obstacles, out of bound)
-            -2: collision with robot, swap
-            -3: collision with robot, cell-wise
         """
-        # Get the blocking reward
-        blocking_reward = self.get_blocking_num(agentID) * self.BLOCKING_COST
-
-        # Get the action reward
-        action_reward = self.ACTION_COST if movement else 0
-
-        # Get the collision reward
         collision_status = self.world.agents[agentID].status
-        collision_reward = self.COLLISION_REWARD if collision_status not in (0, 1) else 0
+        if collision_status == 0:
+            reward = self.ACTION_COST
+            self.isStandingOnGoal[agentID] = False
+        elif collision_status == 1:
+            reward = self.ACTION_COST + self.GOAL_REWARD
+            self.isStandingOnGoal[agentID] = True
+            self.world.agents[agentID].dones += 1
+        else:
+            reward = self.ACTION_COST + self.COLLISION_REWARD
+            self.isStandingOnGoal[agentID] = False
 
-        # get the idle reward
-        idle_reward = self.IDLE_COST if (not movement and not self.check_on_goal(agentID)) else 0
-        self.isStandingOnGoal[agentID] = True if collision_status == 1 else False
+        self.individual_rewards[agentID] = reward
 
-        self.individual_rewards[agentID] = blocking_reward + action_reward + collision_reward + idle_reward
-
-        # collision_status = self.world.agents[agentID].status
-        # if collision_status == 0:
-        #     reward = action_reward
-        #     self.isStandingOnGoal[agentID] = False
-        # elif collision_status == 1:
-        #     reward = action_reward + self.GOAL_REWARD
-        #     self.isStandingOnGoal[agentID] = True
-        #     self.world.agents[agentID].dones += 1 # eliminate in PRIMAL1
-        # else:
-        #     reward = action_reward + self.COLLISION_REWARD
-        #     self.isStandingOnGoal[agentID] = False
-        #
-        # self.individual_rewards[agentID] = reward
+        # todo: check if this reward structure is same as the primal1
 
 
     def listValidActions(self, agent_ID, agent_obs):
@@ -418,30 +324,31 @@ if __name__ == '__main__':
     #           [-1, -1, -1, -1, -1, -1, -1]]
     n_agents = 8
     env = Primal2Env(num_agents=n_agents,
-                     observer=Primal2Observer(observation_size=5),
+                     observer=Primal2Observer(observation_size=7),
                      map_generator=maze_generator(env_size=(10, 11),
                                                   wall_components=(5, 10), obstacle_density=(0.1, 0.2)),
                      IsDiagonal=False, isOneShot=True)
+
     env._reset()
     env._render()
     print('(PrimalC(__main__))env.world.state', env.world.state)
     print('(PrimalC(__main__))env.world.goals_map', env.world.goals_map)
     for j in range(0, 50):
          a1 = int(input())
-         # a2 = int(input())
-         # a3 = int(input())
-         # a4 = int(input())
-         # a5 = int(input())
-         # a6 = int(input())
-         # a7 = int(input())
-         # a8 = int(input())
-         a2 = a3 = a4 = a5 = a6 = a7 = a8 = a1
+         a2 = int(input())
+         a3 = int(input())
+         a4 = int(input())
+         a5 = int(input())
+         a6 = int(input())
+         a7 = int(input())
+         a8 = int(input())
+         # a2 = a3 = a4 = a5 = a6 = a7 = a8 = a1
          movement = {1: a1, 2: a2, 3: a3, 4: a4, 5: a5, 6: a6, 7: a7, 8: a8}
-         msg = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8}
-         obs, _ = env.step_all(movement_dict=movement, msg_dict=msg)
+         msg = {1: a1, 2: a2, 3: a3, 4: a4, 5: a5, 6: a6, 7: a7, 8: a8}
+         env.step_all(movement_dict=movement, msg_dict=msg)
+         obs = env._observe()
          env._render()
          print('(PrimalC(__main__))env.world.state', env.world.state)
          print('(PrimalC(__main__))env.world.goals_map', env.world.goals_map)
          print('(PrimalC(__main__))env.world.state_comms', env.world.state_comms)
-         print('(PrimalC(__main__))env.individual_rewards', env.individual_rewards)
          print('(PrimalC(__main__))obs[1]', obs[1])
