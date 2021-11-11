@@ -88,13 +88,14 @@ class Worker():
                                            self.local_AC.i_grads
                                            ],
                                           feed_dict=feed_dict)
-        print('v_l', v_l)
-        print('i_l', i_l)
-        # print('local_vars', local_vars)
-        print('l_v', local_vars)
-        # print('igrads', i_grads)
+        if NN_DEBUG_MODE:
+            print('v_l', v_l)
+            print('i_l', i_l)
+            # print('local_vars', local_vars)
+            print('l_v', local_vars)
+            # print('igrads', i_grads)
 
-        # raise(TypeError)
+            # raise(TypeError)
         return [i_l], i_grads
 
 
