@@ -203,14 +203,16 @@ class Worker():
             while self.shouldRun(coord, episode_count):
                 episode_buffer, episode_values = [], []
                 episode_reward = episode_step_count = episode_inv_count = targets_done =episode_stop_count = 0
-            
+
+                self.synchronize()
+
                 # Initial state from the environment
                 if self.agentID == 1:
                     if NN_DEBUG_MODE:
-                        print('(Worker-RL) self.env._reset(a) meta:{0}, worker{1}'.format(self.metaAgentID, self.agentID))
+                        print('(Worker-RL)self.env._reset(a) meta:{0}, worker{1}'.format(self.metaAgentID, self.agentID))
                     self.env._reset()
                     if NN_DEBUG_MODE:
-                        print('(Worker-RL) self.env._reset(b) meta:{0}, worker{1}'.format(self.metaAgentID, self.agentID))
+                        print('(Worker-RL)self.env._reset(b) meta:{0}, worker{1}'.format(self.metaAgentID, self.agentID))
                     joint_observations[self.metaAgentID] = self.env._observe()
 
                 if NN_DEBUG_MODE:

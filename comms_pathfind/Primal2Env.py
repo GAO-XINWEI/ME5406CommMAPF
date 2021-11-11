@@ -27,8 +27,13 @@ class Primal2Env(MAPFEnv):
                                          IsDiagonal=IsDiagonal, frozen_steps=frozen_steps, isOneShot=isOneShot)
 
     def _reset(self, new_generator=None, *args):
+        if ENV_DEBUG_MODE:
+            print('(_reset)Begin!')
+
         if new_generator is None:
             self.set_world()
+            if ENV_DEBUG_MODE:
+                print('(_reset)self.set_world successful!')
         else:
             self.map_generator = new_generator
             self.world = World(self.map_generator, num_agents=self.num_agents, isDiagonal=self.IsDiagonal)
@@ -38,11 +43,19 @@ class Primal2Env(MAPFEnv):
         self.fresh = True
         self.done = False
         self.done_asking = False
-        for agentID in range(1,self.num_agents):
+
+        for agentID in range(1, self.num_agents):
             self.individual_blocking[agentID] = self.get_blocking_num(agentID)
 
+        if ENV_DEBUG_MODE:
+            print('(_reset) self.viewer [before]')
         if self.viewer is not None:
             self.viewer = None
+            if ENV_DEBUG_MODE:
+                print('(_reset)self.viewer Cleared!')
+
+        if ENV_DEBUG_MODE:
+            print('(_reset)Reset done!')
 
     def step_all(self, movement_dict, msg_dict={}):
         """
