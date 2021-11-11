@@ -39,28 +39,64 @@ class Worker():
         # we calculate the loss differently for imitation
         # if imitation=True the rollout is assumed to have different dimensions:
         # [o[0],o[1],optimal_actions]
-        
-        temp_actions = np.stack(rollout[:, 2])
+        target_meangoal = rollout[:, 2]
+        target_block = rollout[:, 6]
+        rewards = rollout[:, 7]
+        advantages = rollout[:, 8]
+        # rnn_state = self.local_AC.state_init
+        # s1Value = self.sess.run(self.local_AC.value,
+        #                         feed_dict={self.local_AC.inputs     : np.stack(rollout[:, 0]),
+        #                                    self.local_AC.goal_pos   : np.stack(rollout[:, 1]),
+        #                                    self.local_AC.state_in[0]: rnn_state[0],
+        #                                    self.local_AC.state_in[1]: rnn_state[1]})[0, 0]
+        #
+        # v = self.sess.run([self.local_AC.value,
+        #                    ],
+        #                   # todo: feed the message(last time step) here
+        #                   feed_dict={self.local_AC.inputs: np.stack(rollout[:, 0]),  # state
+        #                   self.local_AC.goal_pos: np.stack(rollout[:, 1]),  # goal vector
+        #                   self.local_AC.state_in[0]: rnn_state[0],
+        #                   self.local_AC.state_in[1]: rnn_state[1],
+        #                              })
+        # values = v[0,0]
+        # self.rewards_plus = np.asarray(rewards.tolist() + [s1Value])
+        # discounted_rewards = discount(self.rewards_plus, gamma)[:-1]
+        # self.value_plus = np.asarray(values.tolist() + [s1Value])
+        # advantages = rewards + gamma * self.value_plus[1:] - self.value_plus[:-1]
+        # advantages = discount(advantages, gamma)
+
+        temp_actions = np.stack(rollout[:, 3])
         rnn_state = self.local_AC.state_init
         feed_dict = {self.global_step             : episode_count,
                      self.local_AC.inputs         : np.stack(rollout[:, 0]),
-                     self.local_AC.goal_pos       : np.stack(rollout[:, 1]),                     
-                     self.local_AC.optimal_actions: np.stack(rollout[:, 2]),
+                     self.local_AC.goal_pos       : np.stack(rollout[:, 1]),
+                     self.local_AC.optimal_actions: np.stack(rollout[:, 3]),
                      self.local_AC.state_in[0]    : rnn_state[0],
                      self.local_AC.state_in[1]    : rnn_state[1],
-                     self.local_AC.train_imitation: (rollout[:, 3]),
+                     self.local_AC.train_imitation: (rollout[:, 4]),
                      self.local_AC.target_v       : np.stack(temp_actions),
                      self.local_AC.train_value    : temp_actions,
+                     self.local_AC.advantages     : advantages,
+                     self.local_AC.target_meangoals      : np.stack(target_meangoal),
+                     self.local_AC.target_blockings      : np.stack(target_block),
                      }
+        # print('feed ', feed_dict)
 
-
-        v_l, i_l, i_grads = self.sess.run([self.local_AC.value_loss,
+        v_l, i_l, local_vars, i_grads = self.sess.run([self.local_AC.value_loss,
                                            self.local_AC.imitation_loss,
-                                           self.local_AC.i_grads],
+                                           self.local_AC.local_vars,
+                                           self.local_AC.i_grads
+                                           ],
                                           feed_dict=feed_dict)
+        print('v_l', v_l)
+        print('i_l', i_l)
+        # print('local_vars', local_vars)
+        print('l_v', local_vars)
+        # print('igrads', i_grads)
 
+        # raise(TypeError)
         return [i_l], i_grads
-    
+
 
     def calculateGradient(self, rollout, bootstrap_value, episode_count, rnn_state0):
         # ([s,a,r,s1,v[0,0]])
@@ -130,7 +166,7 @@ class Worker():
     def imitation_learning_only(self, episode_count):        
         self.env._reset()
         rollouts, targets_done = self.parse_path(episode_count)
-
+        # rollouts.append([])
         if rollouts is None:
             return None, 0
 
@@ -171,7 +207,7 @@ class Worker():
                     joint_observations[self.metaAgentID] = self.env._observe()
 
                 self.synchronize()  # synchronize starting time of the threads
-
+                print('there it is')
                 # Get Information For Each Agent 
                 validActions = self.env.listValidActions(self.agentID, joint_observations[self.metaAgentID][self.agentID])
                 
@@ -179,6 +215,7 @@ class Worker():
 
                 rnn_state = self.local_AC.state_init
                 rnn_state0 = rnn_state
+
 
                 self.synchronize()  # synchronize starting time of the threads
                 swarm_reward[self.metaAgentID] = 0
@@ -382,81 +419,176 @@ class Worker():
         # gradients are accessed by the runner in self.allGradients
         return
 
-
-    def parse_path(self,episode_count):
+    def parse_path(self, episode_count):
         """needed function to take the path generated from M* and create the
         observations and actions for the agent
         path: the exact path ouput by M*, assuming the correct number of agents
         returns: the list of rollouts for the "episode":
                 list of length num_agents with each sublist a list of tuples
-                (observation[0],observation[1],optimal_action,reward)"""   
+                (observation[0],observation[1],optimal_action,reward)"""
 
-        global GIF_frames, SAVE_IL_GIF , IL_GIF_PROB 
-        saveGIF= False  
-        if np.random.rand() < IL_GIF_PROB  : 
-            saveGIF= True
-        if saveGIF and SAVE_IL_GIF:    
-          GIF_frames = [self.env._render()]
-        result  = [[] for i in range(self.num_workers)]
-        actions = {} 
-        o       = {}
+        global GIF_frames, SAVE_IL_GIF, IL_GIF_PROB
+        saveGIF = False
+        if np.random.rand() < IL_GIF_PROB:
+            saveGIF = True
+        if saveGIF and SAVE_IL_GIF:
+            GIF_frames = [self.env._render()]
+        result = [[] for i in range(self.num_workers)]
+        msg = np.float32(0)
+        blocking = np.float32(0)
+        reward = np.float32(0)
+        advantages = np.float32(0)
+        meangoal = np.array([0., 0.], dtype='float32')
+
+        actions = {}
+        o = {}
         finished = {}
-        train_imitation = {} 
-        count_finished  = 0 
-        pos_buffer = [] 
-        goal_buffer  = [] 
+        train_imitation = {}
+        count_finished = 0
+        pos_buffer = []
+        goal_buffer = []
         all_obs = self.env._observe()
         for agentID in range(1, self.num_workers + 1):
             o[agentID] = all_obs[agentID]
-            train_imitation[agentID] = 1 
-            finished[agentID] = 0 
-        step_count = 0 
-        while step_count <= max_episode_length and count_finished<self.num_workers :
+            train_imitation[agentID] = 1
+            finished[agentID] = 0
+        step_count = 0
+        while step_count <= max_episode_length and count_finished < self.num_workers:
             path = self.env.expert_until_first_goal()
             if path is None:  # solution not exists
-                if step_count !=0 :
-                    return result, 0 
-                print('Failed intially')     
-                return None, 0      
-            none_on_goal = True
-            path_step = 1  
-            while none_on_goal and step_count <= max_episode_length and count_finished<self.num_workers :
-                positions= []
-                goals=[]  
+                if step_count != 0:
+                    return result, 0
+                print('Failed intially')
+                return None, 0
+            none_on_goal = True  # todo:
+            path_step = 1
+            while none_on_goal and step_count <= max_episode_length and count_finished < self.num_workers:
+                positions = []
+                goals = []
                 for i in range(self.num_workers):
-                    agent_id = i+1
-                    if finished[agent_id] :
-                        actions[agent_id] = 0
-                    else :     
-                        next_pos = path[path_step][i]
-                        diff = tuple_minus(next_pos, self.env.world.getPos(agent_id))  
-                        try :
-                            actions[agent_id] = dir2action(diff)
-                        except :
-                            print(pos_buffer) 
-                            print(goal_buffer) 
-                            actions[agent_id] = dir2action(diff)                                
+                    agent_id = i + 1
+                    # if finished[agent_id]:  # todo:
+                    #     actions[agent_id] = 0
+                    # else:
+                    #     next_pos = path[path_step][i]
+                    #     diff = tuple_minus(next_pos, self.env.world.getPos(agent_id))
+                    #     try:
+                    #         actions[agent_id] = dir2action(diff)
+                    #     except:
+                    #         print('(parse_path)pos_buffer', pos_buffer)
+                    #         print('(parse_path)goal_buffer', goal_buffer)
+                    #         actions[agent_id] = dir2action(diff)
+                    next_pos = path[path_step][i]           # todo
+                    diff = tuple_minus(next_pos, self.env.world.getPos(agent_id))
+                    try:
+                        actions[agent_id] = dir2action(diff)
+                    except:
+                        print('(parse_path)pos_buffer', pos_buffer)
+                        print('(parse_path)goal_buffer', goal_buffer)
+                        actions[agent_id] = dir2action(diff)
+
+                if ENV_DEBUG_MODE:
+                    print('(parse_path)actions', actions)
                 all_obs, _ = self.env.step_all(actions)
-                for i in range(self.num_workers) :
-                    agent_id = i+1
-                    positions.append(self.env.world.getPos(agent_id)) 
-                    goals.append(self.env.world.getGoal(agent_id))                    
-                    result[i].append([o[agent_id][0], o[agent_id][1], actions[agent_id],train_imitation[agent_id]])
-                    if self.env.world.agents[agent_id].status >= 1 and finished[agent_id]!=1:
-                        # none_on_goal = False
-                        finished[agent_id] = 1 
-                        count_finished +=1 
-                pos_buffer.append(positions)   
-                goal_buffer.append(goals)   
-                if saveGIF and SAVE_IL_GIF:   
-                    GIF_frames.append(self.env._render())         
+
+                for i in range(self.num_workers):
+                    agent_id = i + 1
+                    positions.append(self.env.world.getPos(agent_id))
+                    goals.append(self.env.world.getGoal(agent_id))
+                    result[i].append(
+                        [o[agent_id][0], o[agent_id][1], o[agent_id][2], actions[agent_id], train_imitation[agent_id],
+                         msg, blocking, reward, advantages])
+                    if self.env.world.agents[agent_id].status >= 1 and finished[agent_id] != 1:
+                        # none_on_goal = False # todo:
+                        finished[agent_id] = 1  # todo:
+                        count_finished += 1
+                pos_buffer.append(positions)
+                goal_buffer.append(goals)
+                if saveGIF and SAVE_IL_GIF:
+                    GIF_frames.append(self.env._render())
                 o = all_obs
                 step_count += 1
-                path_step += 1  
+                path_step += 1
         if saveGIF and SAVE_IL_GIF:
             make_gif(np.array(GIF_frames),
-                                     '{}/episodeIL_{}.gif'.format(gifs_path,episode_count))       
-        return result,count_finished
+                     '{}/episodeIL_{}.gif'.format(gifs_path, episode_count))
+        return result, count_finished
+
+    # def parse_path(self,episode_count):
+    #     """needed function to take the path generated from M* and create the
+    #     observations and actions for the agent
+    #     path: the exact path ouput by M*, assuming the correct number of agents
+    #     returns: the list of rollouts for the "episode":
+    #             list of length num_agents with each sublist a list of tuples
+    #             (observation[0],observation[1],optimal_action,reward)"""
+    #
+    #     global GIF_frames, SAVE_IL_GIF , IL_GIF_PROB
+    #     saveGIF= False
+    #     if np.random.rand() < IL_GIF_PROB  :
+    #         saveGIF= True
+    #     if saveGIF and SAVE_IL_GIF:
+    #       GIF_frames = [self.env._render()]
+    #     result  = [[] for i in range(self.num_workers)]
+    #     actions = {}
+    #     o       = {}
+    #     finished = {}
+    #     train_imitation = {}
+    #     count_finished  = 0
+    #     pos_buffer = []
+    #     goal_buffer  = []
+    #     all_obs = self.env._observe()
+    #     for agentID in range(1, self.num_workers + 1):
+    #         o[agentID] = all_obs[agentID]
+    #         train_imitation[agentID] = 1
+    #         finished[agentID] = 0
+    #     step_count = 0
+    #     while step_count <= max_episode_length and count_finished<self.num_workers :
+    #         path = self.env.expert_until_first_goal()
+    #         if path is None:  # solution not exists
+    #             if step_count !=0 :
+    #                 return result, 0
+    #             print('Failed intially')
+    #             return None, 0
+    #         none_on_goal = True
+    #         path_step = 1
+    #         while none_on_goal and step_count <= max_episode_length and count_finished<self.num_workers :
+    #             positions= []
+    #             goals=[]
+    #             for i in range(self.num_workers):
+    #                 agent_id = i+1
+    #                 if finished[agent_id] :
+    #                     actions[agent_id] = 0
+    #                 else :
+    #                     next_pos = path[path_step][i]
+    #                     diff = tuple_minus(next_pos, self.env.world.getPos(agent_id))
+    #                     try :
+    #                         actions[agent_id] = dir2action(diff)
+    #                     except :
+    #                         print(pos_buffer)
+    #                         print(goal_buffer)
+    #                         actions[agent_id] = dir2action(diff)
+    #             all_obs, _ = self.env.step_all(actions)
+    #             for i in range(self.num_workers) :
+    #                 agent_id = i+1
+    #                 positions.append(self.env.world.getPos(agent_id))
+    #                 goals.append(self.env.world.getGoal(agent_id))
+    #                 result[i].append([o[agent_id][0], o[agent_id][1], o[agent_id][2], actions[agent_id],train_imitation[agent_id]])
+    #                 if self.env.world.agents[agent_id].status >= 1 and finished[agent_id]!=1:
+    #                     # none_on_goal = False
+    #                     finished[agent_id] = 1
+    #                     count_finished +=1
+    #             pos_buffer.append(positions)
+    #             goal_buffer.append(goals)
+    #             if saveGIF and SAVE_IL_GIF:
+    #                 GIF_frames.append(self.env._render())
+    #             o = all_obs
+    #             step_count += 1
+    #             path_step += 1
+    #     if saveGIF and SAVE_IL_GIF:
+    #         make_gif(np.array(GIF_frames),
+    #                                  '{}/episodeIL_{}.gif'.format(gifs_path,episode_count))
+    #     # print('rolloutil ', result[1])
+    #     return result,count_finished
 
     
     def shouldRun(self, coord, episode_count=None):
