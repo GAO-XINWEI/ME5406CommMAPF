@@ -185,6 +185,8 @@ class Worker():
     
     
     def run_episode_multithreaded(self, episode_count, coord):
+        if NN_DEBUG_MODE:
+            print('(Worker-RL)Begin to run! meta:{0}, worker{1}'.format(self.metaAgentID, self.agentID))
         
         if self.metaAgentID < NUM_IL_META_AGENTS:
             assert(1==0)
@@ -203,10 +205,18 @@ class Worker():
             
                 # Initial state from the environment
                 if self.agentID == 1:
+                    if NN_DEBUG_MODE:
+                        print('(Worker-RL) self.env._reset(a) meta:{0}, worker{1}'.format(self.metaAgentID, self.agentID))
                     self.env._reset()
+                    if NN_DEBUG_MODE:
+                        print('(Worker-RL) self.env._reset(b) meta:{0}, worker{1}'.format(self.metaAgentID, self.agentID))
                     joint_observations[self.metaAgentID] = self.env._observe()
 
+                if NN_DEBUG_MODE:
+                    print('(Worker-RL)self.synchronize(1a) meta:{0}, worker{1}'.format(self.metaAgentID, self.agentID))
                 self.synchronize()  # synchronize starting time of the threads
+                if NN_DEBUG_MODE:
+                    print('(Worker-RL)self.synchronize(1b) meta:{0}, worker{1}'.format(self.metaAgentID, self.agentID))
                 print('there it is')
                 # Get Information For Each Agent 
                 validActions = self.env.listValidActions(self.agentID, joint_observations[self.metaAgentID][self.agentID])
@@ -513,82 +523,6 @@ class Worker():
             make_gif(np.array(GIF_frames),
                      '{}/episodeIL_{}.gif'.format(gifs_path, episode_count))
         return result, count_finished
-
-    # def parse_path(self,episode_count):
-    #     """needed function to take the path generated from M* and create the
-    #     observations and actions for the agent
-    #     path: the exact path ouput by M*, assuming the correct number of agents
-    #     returns: the list of rollouts for the "episode":
-    #             list of length num_agents with each sublist a list of tuples
-    #             (observation[0],observation[1],optimal_action,reward)"""
-    #
-    #     global GIF_frames, SAVE_IL_GIF , IL_GIF_PROB
-    #     saveGIF= False
-    #     if np.random.rand() < IL_GIF_PROB  :
-    #         saveGIF= True
-    #     if saveGIF and SAVE_IL_GIF:
-    #       GIF_frames = [self.env._render()]
-    #     result  = [[] for i in range(self.num_workers)]
-    #     actions = {}
-    #     o       = {}
-    #     finished = {}
-    #     train_imitation = {}
-    #     count_finished  = 0
-    #     pos_buffer = []
-    #     goal_buffer  = []
-    #     all_obs = self.env._observe()
-    #     for agentID in range(1, self.num_workers + 1):
-    #         o[agentID] = all_obs[agentID]
-    #         train_imitation[agentID] = 1
-    #         finished[agentID] = 0
-    #     step_count = 0
-    #     while step_count <= max_episode_length and count_finished<self.num_workers :
-    #         path = self.env.expert_until_first_goal()
-    #         if path is None:  # solution not exists
-    #             if step_count !=0 :
-    #                 return result, 0
-    #             print('Failed intially')
-    #             return None, 0
-    #         none_on_goal = True
-    #         path_step = 1
-    #         while none_on_goal and step_count <= max_episode_length and count_finished<self.num_workers :
-    #             positions= []
-    #             goals=[]
-    #             for i in range(self.num_workers):
-    #                 agent_id = i+1
-    #                 if finished[agent_id] :
-    #                     actions[agent_id] = 0
-    #                 else :
-    #                     next_pos = path[path_step][i]
-    #                     diff = tuple_minus(next_pos, self.env.world.getPos(agent_id))
-    #                     try :
-    #                         actions[agent_id] = dir2action(diff)
-    #                     except :
-    #                         print(pos_buffer)
-    #                         print(goal_buffer)
-    #                         actions[agent_id] = dir2action(diff)
-    #             all_obs, _ = self.env.step_all(actions)
-    #             for i in range(self.num_workers) :
-    #                 agent_id = i+1
-    #                 positions.append(self.env.world.getPos(agent_id))
-    #                 goals.append(self.env.world.getGoal(agent_id))
-    #                 result[i].append([o[agent_id][0], o[agent_id][1], o[agent_id][2], actions[agent_id],train_imitation[agent_id]])
-    #                 if self.env.world.agents[agent_id].status >= 1 and finished[agent_id]!=1:
-    #                     # none_on_goal = False
-    #                     finished[agent_id] = 1
-    #                     count_finished +=1
-    #             pos_buffer.append(positions)
-    #             goal_buffer.append(goals)
-    #             if saveGIF and SAVE_IL_GIF:
-    #                 GIF_frames.append(self.env._render())
-    #             o = all_obs
-    #             step_count += 1
-    #             path_step += 1
-    #     if saveGIF and SAVE_IL_GIF:
-    #         make_gif(np.array(GIF_frames),
-    #                                  '{}/episodeIL_{}.gif'.format(gifs_path,episode_count))
-    #     # print('rolloutil ', result[1])
-    #     return result,count_finished
 
     
     def shouldRun(self, coord, episode_count=None):
