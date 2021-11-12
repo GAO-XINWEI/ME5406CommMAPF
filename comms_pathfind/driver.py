@@ -78,13 +78,13 @@ def writeToTensorBoard(global_summary, tensorboardData, curr_episode, plotMeans=
         tensorboardData = np.array(tensorboardData)
         tensorboardData = list(np.mean(tensorboardData, axis=0))
 
-        valueLoss, policyLoss, validLoss, entropyLoss, gradNorm, varNorm,\
+        valueLoss, policyLoss, validLoss, entropyLoss, blockingLoss, meangoalLoss, messageLoss, gradNorm, varNorm,\
             mean_length, mean_value, mean_invalid, \
             mean_stop, mean_reward, mean_finishes = tensorboardData
 
     else:
         firstEpisode = tensorboardData[0]
-        valueLoss, policyLoss, validLoss, entropyLoss, gradNorm, varNorm, \
+        valueLoss, policyLoss, validLoss, entropyLoss, blockingLoss, meangoalLoss, messageLoss, gradNorm, varNorm, \
             mean_length, mean_value, mean_invalid, \
             mean_stop, mean_reward, mean_finishes = firstEpisode
 

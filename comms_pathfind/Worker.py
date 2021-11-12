@@ -160,7 +160,7 @@ class Worker():
                                                                 self.local_AC.grads],
                                                                 feed_dict=feed_dict)
 
-        return [v_l, p_l, valid_l, e_l, g_n, v_n, blocking_l, meangoal_l, message_l], grads
+        return [v_l, p_l, valid_l, e_l, blocking_l, meangoal_l, message_l, g_n, v_n], grads
 
 
 
