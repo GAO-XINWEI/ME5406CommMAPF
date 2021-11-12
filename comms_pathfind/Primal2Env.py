@@ -21,7 +21,7 @@ class Primal2Env(MAPFEnv):
     metadata = {"render.modes": ["human", "ansi"]}
 
     def __init__(self, observer, map_generator, num_agents=None,
-                 IsDiagonal=False, frozen_steps=2, isOneShot=True):
+                 IsDiagonal=False, frozen_steps=0, isOneShot=True):
         super(Primal2Env, self).__init__(observer=observer, map_generator=map_generator,
                                          num_agents=num_agents,
                                          IsDiagonal=IsDiagonal, frozen_steps=frozen_steps, isOneShot=isOneShot)
