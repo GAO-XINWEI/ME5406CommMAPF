@@ -25,7 +25,7 @@ class Runner(object):
         # tensorflow must be imported within the constructor
         # because this class will be instantiated on a remote ray node
         import tensorflow as tf
-        
+
         num_agents = NUM_THREADS
         self.env = Primal2Env(num_agents=num_agents,
                               observer=Primal2Observer(observation_size=OBS_SIZE,
@@ -36,7 +36,7 @@ class Runner(object):
                                   obstacle_density=OBSTACLE_DENSITY),
                               IsDiagonal=DIAG_MVMT,
                               isOneShot=True)
-        
+
         self.metaAgentID = metaAgentID
 
         trainer = None
@@ -44,8 +44,8 @@ class Runner(object):
         self.currEpisode = int(metaAgentID)
 
         self.global_step = tf.placeholder(tf.float32)
-        
-        
+
+
         # first `NUM_IL_META_AGENTS` only use IL and don't need gpu/tensorflow
         if self.metaAgentID < NUM_IL_META_AGENTS:
             config = tf.ConfigProto(allow_soft_placement=True, device_count={"GPU": 0})
@@ -61,10 +61,10 @@ class Runner(object):
             self.saver = tf.train.Saver(max_to_keep=1)
             self.coord = tf.train.Coordinator()
 
-            
+
         self.sess = tf.Session(config=config)
         self.sess.run(tf.global_variables_initializer())
-        
+
 
         self.weightVars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
         weights = self.sess.run(self.weightVars)
@@ -81,7 +81,7 @@ class Runner(object):
         workers = []
         worker_threads = []
         workerNames = ["worker_" + str(i+1) for i in range(NUM_THREADS)]
-        groupLock = GroupLock.GroupLock([workerNames, workerNames]) # TODO        
+        groupLock = GroupLock.GroupLock([workerNames, workerNames]) # TODO
 
         workersPerMetaAgent = NUM_THREADS
 
@@ -97,12 +97,12 @@ class Runner(object):
             worker_work = lambda: w.work(episodeNumber, self.coord, self.saver, self.weightVars)
             t = threading.Thread(target=(worker_work))
             t.start()
-            
+
             worker_threads.append(t)
 
         self.coord.join(worker_threads)
 
-        
+
         jobResults = []
         loss_metrics = []
         perf_metrics = []
@@ -113,13 +113,13 @@ class Runner(object):
                     jobResults = jobResults + w.allGradients
                 elif JOB_TYPE == JOB_OPTIONS.getExperience:
                     jobResults.append(w.experienceBuffer)
-            
+
             is_imitation = False # w.is_imitation
 
             loss_metrics.append(w.loss_metrics)
             perf_metrics.append(w.perf_metrics)
 
-            
+
         avg_loss_metrics = list(np.mean(np.array(loss_metrics), axis=0))
 
 
@@ -135,16 +135,16 @@ class Runner(object):
             #    targets_done
             # ]
 
-            
+
             perf_metrics = np.array(perf_metrics)
             avg_perf_metrics = np.mean(perf_metrics[:, :4], axis=0)
             episode_reward = np.sum(perf_metrics[:,4])
             targets_done = np.sum(perf_metrics[:, 5])
-            avg_perf_metrics = list(avg_perf_metrics) + [episode_reward, targets_done]            
+            avg_perf_metrics = list(avg_perf_metrics) + [episode_reward, targets_done]
             all_metrics = avg_loss_metrics + avg_perf_metrics
         else:
             all_metrics = avg_loss_metrics
-        
+
         return jobResults, all_metrics, is_imitation
 
     def imitationLearningJob(self, episodeNumber):
@@ -156,7 +156,7 @@ class Runner(object):
                         self.env, self.localNetwork,
                         self.sess, None, learningAgent=True, global_step=self.global_step)
 
-        
+
         gradients, losses = worker.imitation_learning_only(episodeNumber)
         mean_imitation_loss = [np.mean(losses)]
 
@@ -182,8 +182,8 @@ class Runner(object):
             print("not implemented")
             assert(1==0)
 
-                   
-        
+
+
         # Get the job results from the learning agents
         # and send them back to the master network        
         info = {
@@ -197,13 +197,13 @@ class Runner(object):
 
 @ray.remote(num_cpus=3, num_gpus= 1.0 / (NUM_META_AGENTS - NUM_IL_META_AGENTS + 1))
 class RLRunner(Runner):
-    def __init__(self, metaAgentID):        
+    def __init__(self, metaAgentID):
         super().__init__(metaAgentID)
 
 
 @ray.remote(num_cpus=1, num_gpus=0)
 class imitationRunner(Runner):
-    def __init__(self, metaAgentID):        
+    def __init__(self, metaAgentID):
         super().__init__(metaAgentID)
 
 if __name__ == '__main__':

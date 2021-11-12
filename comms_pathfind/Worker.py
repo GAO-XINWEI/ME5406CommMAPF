@@ -17,14 +17,14 @@ def discount(x, gamma):
 
 class Worker():
     def __init__(self, metaAgentID, workerID, workers_per_metaAgent, env, localNetwork, sess, groupLock, learningAgent, global_step):
-        
+
         self.metaAgentID = metaAgentID
         self.agentID = workerID
         self.name = "worker_" + str(workerID)
         self.num_workers = workers_per_metaAgent
         self.global_step = global_step
         self.nextGIF = 0
-        
+
         self.env = env
         self.local_AC = localNetwork
         self.groupLock = groupLock
@@ -135,8 +135,8 @@ class Worker():
             self.local_AC.inputs     : np.stack(inputs),
             self.local_AC.goal_pos   : np.stack(goals),
             self.local_AC.actions    : actions,
-            self.local_AC.target_mg  : np.stack(target_meangoal),
-            self.local_AC.target_bl  : np.stack(target_block),
+            self.local_AC.target_meangoals  : np.stack(target_meangoal),
+            self.local_AC.target_blockings  : np.stack(target_block),
             # self.local_AC.block      : block,
             # self.local_AC.message    : message,
             self.local_AC.train_valid: np.stack(valids),
@@ -155,7 +155,7 @@ class Worker():
                                                                 self.local_AC.grad_norms,
                                                                 self.local_AC.var_norms,
                                                                 self.local_AC.blocking_loss,
-                                                                self.local_AC.meangoal_loss,
+                                                                self.local_AC.mean_goal_loss,
                                                                 self.local_AC.message_loss,
                                                                 self.local_AC.grads],
                                                                 feed_dict=feed_dict)
@@ -164,7 +164,7 @@ class Worker():
 
 
 
-    def imitation_learning_only(self, episode_count):        
+    def imitation_learning_only(self, episode_count):
         self.env._reset()
         rollouts, targets_done = self.parse_path(episode_count)
         # rollouts.append([])
@@ -175,7 +175,7 @@ class Worker():
         losses = []
         for i in range(self.num_workers):
             train_buffer = rollouts[i]
-            
+
             imitation_loss, grads = self.calculateImitationGradient(train_buffer, episode_count)
 
             gradients.append(grads)
@@ -183,12 +183,12 @@ class Worker():
 
         return gradients, losses
 
-    
-    
+
+
     def run_episode_multithreaded(self, episode_count, coord):
         if NN_DEBUG_MODE:
             print('(Worker-RL)Begin to run! meta:{0}, worker{1}'.format(self.metaAgentID, self.agentID))
-        
+
         if self.metaAgentID < NUM_IL_META_AGENTS:
             assert(1==0)
             # print("THIS CODE SHOULD NOT TRIGGER")
@@ -198,7 +198,7 @@ class Worker():
         global episode_lengths, episode_mean_values, episode_invalid_ops, episode_stop_ops, episode_rewards, episode_finishes
 
         num_agents = self.num_workers
-        
+
         with self.sess.as_default(), self.sess.graph.as_default():
             while self.shouldRun(coord, episode_count):
                 episode_buffer, episode_values = [], []
@@ -221,9 +221,9 @@ class Worker():
                 if NN_DEBUG_MODE:
                     print('(Worker-RL)self.synchronize(1b) meta:{0}, worker{1}'.format(self.metaAgentID, self.agentID))
                 print('there it is')
-                # Get Information For Each Agent 
+                # Get Information For Each Agent
                 validActions = self.env.listValidActions(self.agentID, joint_observations[self.metaAgentID][self.agentID])
-                
+
                 s = joint_observations[self.metaAgentID][self.agentID]
 
                 rnn_state = self.local_AC.state_init
@@ -276,12 +276,12 @@ class Worker():
                                                                    })
 
                             skipping_state = False
-                            train_policy = train_val = 1 
-                       
+                            train_policy = train_val = 1
+
                         if not skipping_state and not agent_done:
                             if not (np.argmax(a_dist.flatten()) in validActions):
                                 episode_inv_count += 1
-                                train_val = 0 
+                                train_val = 0
                             train_valid = np.zeros(a_size)
                             train_valid[validActions] = 1
 
@@ -295,7 +295,7 @@ class Worker():
 
                             # public the message here 'joint_comms'
                             joint_comms[self.metaAgentID][self.agentID] = message
-                            joint_blocking[self.metaAgentID][self.agentID] = self.env.individual.blocking[self.agentID]
+                            joint_blocking[self.metaAgentID][self.agentID] = self.env.individual_blocking[self.agentID]
 
                         # Make A Single Agent Gather All Information
 
@@ -315,16 +315,16 @@ class Worker():
 
                         self.synchronize()  # synchronize threads
 
-                        # Get observation,reward, valid actions for each agent 
+                        # Get observation,reward, valid actions for each agent
                         s1           = joint_observations[self.metaAgentID][self.agentID]
                         r            = copy.deepcopy(joint_rewards[self.metaAgentID][self.agentID])
 
                         if not agent_done:
                             validActions = self.env.listValidActions(self.agentID, s1)
 
-                        
-                        self.synchronize() 
-                        # Append to Appropriate buffers 
+
+                        self.synchronize()
+                        # Append to Appropriate buffers
                         if not skipping_state and not agent_done:
                             episode_buffer.append([s[0], a, joint_rewards[self.metaAgentID][self.agentID] , s1, v[0, 0], train_valid, s[1], s[2], joint_blocking[self.metaAgentID][self.agentID], meangoal ,blocking, message, train_val,train_policy])
                             episode_values.append(v[0, 0])
@@ -369,7 +369,7 @@ class Worker():
                         if episode_step_count >= max_episode_length:
                             break
 
-                        
+
                     episode_lengths[self.metaAgentID].append(episode_step_count)
                     episode_mean_values[self.metaAgentID].append(np.nanmean(episode_values))
                     episode_invalid_ops[self.metaAgentID].append(episode_inv_count)
@@ -404,7 +404,7 @@ class Worker():
                     return perf_metrics
 
 
-    
+
     def synchronize(self):
         # handy thing for keeping track of which to release and acquire
         if not hasattr(self, "lock_bool"):
@@ -414,19 +414,19 @@ class Worker():
         self.lock_bool = not self.lock_bool
 
 
-    
+
     def work(self, currEpisode, coord, saver, allVariables):
         '''
         Interacts with the environment. The agent gets either gradients or experience buffer
         '''
         self.currEpisode = currEpisode
-        
+
 
         if COMPUTE_TYPE == COMPUTE_OPTIONS.multiThreaded:
             self.perf_metrics = self.run_episode_multithreaded(currEpisode, coord)
         else:
             print("not implemented")
-            assert(1==0)            
+            assert(1==0)
 
 
         # gradients are accessed by the runner in self.allGradients
@@ -527,7 +527,7 @@ class Worker():
                      '{}/episodeIL_{}.gif'.format(gifs_path, episode_count))
         return result, count_finished
 
-    
+
     def shouldRun(self, coord, episode_count=None):
         if TRAINING:
             return not coord.should_stop()

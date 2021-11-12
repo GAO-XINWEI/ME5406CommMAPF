@@ -47,13 +47,14 @@ class ACNet:
             self.train_imitation        = tf.placeholder(tf.float32, [None], 'Trainimit')
             self.optimal_actions        = tf.placeholder(shape=[None], dtype=tf.int32)
             self.optimal_actions_onehot = tf.one_hot(self.optimal_actions, a_size, dtype=tf.float32)
+            self.train_valids           = tf.placeholder(tf.float32, [None, 1])
 
             # Loss Functions
             self.value_loss    = 0.1 * tf.reduce_mean(self.train_value*tf.square(self.target_v - tf.reshape(self.value, shape=[-1])))
             self.entropy       = - tf.reduce_mean(self.policy * tf.log(tf.clip_by_value(self.policy,1e-10,1.0)))
             self.policy_loss   = -0.5 * tf.reduce_mean(tf.log(tf.clip_by_value(self.responsible_outputs,1e-15,1.0)) * self.advantages)
             self.valid_loss    = -16 * tf.reduce_mean(tf.log(tf.clip_by_value(self.valids,1e-10,1.0)) *\
-                                self.train_valid+tf.log(tf.clip_by_value(1-self.valids,1e-10,1.0)) * (1-self.train_valid))
+                                self.train_valids * self.train_valid +tf.log(tf.clip_by_value(1-self.valids,1e-10,1.0)) * (1-self.train_valid))
             self.blocking_loss = - tf.reduce_mean(self.target_blockings*tf.log(tf.clip_by_value(self.blocking,1e-10,1.0))\
                                       +(1-self.target_blockings)*tf.log(tf.clip_by_value(1-self.blocking,1e-10,1.0)))
             self.mean_goal_loss = - tf.reduce_mean(self.target_meangoals * tf.log(tf.clip_by_value(self.mean_goal, 1e-10, 1.0)) \

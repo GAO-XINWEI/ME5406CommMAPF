@@ -31,7 +31,7 @@ if not os.path.exists(gifs_path):
 
 
 global_step = tf.placeholder(tf.float32)
-        
+
 if ADAPT_LR:
     # computes LR_Q/sqrt(ADAPT_COEFF*steps+1)
     # we need the +1 so that lr at step 0 is defined
@@ -48,7 +48,7 @@ def apply_gradients(global_network, gradients, sess, curr_episode):
 
     sess.run([global_network.apply_grads], feed_dict=feed_dict)
 
-def writeImitationDataToTensorboard(global_summary, metrics, curr_episode):    
+def writeImitationDataToTensorboard(global_summary, metrics, curr_episode):
     summary = tf.Summary()
     summary.value.add(tag='Losses/Imitation loss', simple_value=metrics[0])
     global_summary.add_summary(summary, curr_episode)
@@ -68,12 +68,12 @@ def writeEpisodeRatio(global_summary, numIL, numRL, sess, curr_episode):
     global_summary.add_summary(summary, curr_episode)
     global_summary.flush()
 
-    
+
 
 def writeToTensorBoard(global_summary, tensorboardData, curr_episode, plotMeans=True):
     # each row in tensorboardData represents an episode
     # each column is a specific metric
-    
+
     if plotMeans == True:
         tensorboardData = np.array(tensorboardData)
         tensorboardData = list(np.mean(tensorboardData, axis=0))
@@ -81,16 +81,16 @@ def writeToTensorBoard(global_summary, tensorboardData, curr_episode, plotMeans=
         valueLoss, policyLoss, validLoss, entropyLoss, gradNorm, varNorm,\
             mean_length, mean_value, mean_invalid, \
             mean_stop, mean_reward, mean_finishes = tensorboardData
-        
+
     else:
         firstEpisode = tensorboardData[0]
         valueLoss, policyLoss, validLoss, entropyLoss, gradNorm, varNorm, \
             mean_length, mean_value, mean_invalid, \
             mean_stop, mean_reward, mean_finishes = firstEpisode
 
-        
+
     summary = tf.Summary()
-    
+
     summary.value.add(tag='Perf/Reward', simple_value=mean_reward)
     summary.value.add(tag='Perf/Targets Done', simple_value=mean_finishes)
     summary.value.add(tag='Perf/Length', simple_value=mean_length)
@@ -104,13 +104,13 @@ def writeToTensorBoard(global_summary, tensorboardData, curr_episode, plotMeans=
     summary.value.add(tag='Losses/Grad Norm', simple_value=gradNorm)
     summary.value.add(tag='Losses/Var Norm', simple_value=varNorm)
 
-    
+
     global_summary.add_summary(summary, int(curr_episode - len(tensorboardData)))
     global_summary.flush()
 
 
-    
-def main():    
+
+def main():
     with tf.device("/gpu:0"):
         trainer = tf.contrib.opt.NadamOptimizer(learning_rate=lr, use_locking=True)
         global_network = ACNet(GLOBAL_NET_SCOPE,a_size,trainer,False,NUM_CHANNEL, OBS_SIZE,GLOBAL_NET_SCOPE, GLOBAL_NETWORK=True)
@@ -134,14 +134,14 @@ def main():
             curr_episode = 0
 
 
-        
+
         # launch all of the threads:
-    
+
         il_agents = [imitationRunner.remote(i) for i in range(NUM_IL_META_AGENTS)]
         rl_agents = [RLRunner.remote(i) for i in range(NUM_IL_META_AGENTS, NUM_META_AGENTS)]
         meta_agents = il_agents + rl_agents
 
-        
+
 
         # get the initial weights from the global network
         weight_names = tf.trainable_variables()
@@ -150,9 +150,9 @@ def main():
 
         weightVars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
 
-        
+
         # launch the first job (e.g. getGradient) on each runner
-        jobList = [] # Ray ObjectIDs 
+        jobList = [] # Ray ObjectIDs
         for i, meta_agent in enumerate(meta_agents):
             jobList.append(meta_agent.job.remote(weights, curr_episode))
             curr_episode += 1
@@ -168,7 +168,7 @@ def main():
             while True:
                 # wait for any job to be completed - unblock as soon as the earliest arrives
                 done_id, jobList = ray.wait(jobList)
-                
+
                 # get the results of the task from the object store
                 jobResults, metrics, info = ray.get(done_id)[0]
 
@@ -186,13 +186,13 @@ def main():
                 # Write ratio of RL to IL episodes to tensorboard
                 writeEpisodeRatio(global_summary, numImitationEpisodes, numRLEpisodes, sess, curr_episode)
 
-                
+
                 if JOB_TYPE == JOB_OPTIONS.getGradient:
                     if jobResults:
                         for gradient in jobResults:
                             apply_gradients(global_network, gradient, sess, curr_episode)
 
-                    
+
                 elif JOB_TYPE == JOB_OPTIONS.getExperience:
                     print("not implemented")
                     assert(1==0)
@@ -205,7 +205,7 @@ def main():
                 if len(tensorboardData) >= SUMMARY_WINDOW:
                     writeToTensorBoard(global_summary, tensorboardData, curr_episode)
                     tensorboardData = []
-                    
+
                 # get the updated weights from the global network
                 weight_names = tf.trainable_variables()
                 weights = sess.run(weight_names)
@@ -214,19 +214,19 @@ def main():
                 # start a new job on the recently completed agent with the updated weights
                 jobList.extend([meta_agents[info['id']].job.remote(weights, curr_episode)])
 
-                
+
                 if curr_episode % 100 == 0:
                     print ('Saving Model', end='\n')
                     saver.save(sess, model_path+'/model-'+str(int(curr_episode))+'.cptk')
                     print ('Saved Model', end='\n')
 
-                
-                    
+
+
         except KeyboardInterrupt:
             print("CTRL-C pressed. killing remote workers")
             for a in meta_agents:
                 ray.kill(a)
 
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     main()

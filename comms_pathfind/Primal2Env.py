@@ -21,7 +21,7 @@ class Primal2Env(MAPFEnv):
     metadata = {"render.modes": ["human", "ansi"]}
 
     def __init__(self, observer, map_generator, num_agents=None,
-                 IsDiagonal=False, frozen_steps=0, isOneShot=True):
+                 IsDiagonal=False, frozen_steps=0, isOneShot=True): #frozen step was 2
         super(Primal2Env, self).__init__(observer=observer, map_generator=map_generator,
                                          num_agents=num_agents,
                                          IsDiagonal=IsDiagonal, frozen_steps=frozen_steps, isOneShot=isOneShot)
@@ -295,7 +295,7 @@ class Primal2Env(MAPFEnv):
                     return pos
             return None
 
-        VANILLA_VALID_ACTIONS = True   
+        VANILLA_VALID_ACTIONS = True
 
         if VANILLA_VALID_ACTIONS == True:                                       ##### set true here. what is VANILLA?
             available_actions = []
