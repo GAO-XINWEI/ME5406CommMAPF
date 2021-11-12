@@ -24,8 +24,8 @@ OBSTACLE_DENSITY        = (0.2, 0.7) if not ENV_DEBUG_MODE else (.14, .15)  # ra
 
 DIAG_MVMT               = False  # Diagonal movements allowed?
 a_size                  = 5 + int(DIAG_MVMT) * 4
-NUM_META_AGENTS         = 1
-NUM_IL_META_AGENTS      = 0
+NUM_META_AGENTS         = 2
+NUM_IL_META_AGENTS      = 1
 
 NUM_THREADS             = 6 # int(multiprocessing.cpu_count() / (2 * NUM_META_AGENTS))
 NUM_BUFFERS             = 1 # NO EXPERIENCE REPLAY int(NUM_THREADS / 2)
