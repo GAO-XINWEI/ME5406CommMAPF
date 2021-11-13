@@ -50,6 +50,10 @@ class Primal2Env(MAPFEnv):
         if ENV_DEBUG_MODE:
             print('(_reset) self.viewer [before]')
         if self.viewer is not None:
+
+            self.viewer.__del__()
+            if ENV_DEBUG_MODE:
+                print('(_reset)self.viewer Closed!')
             self.viewer = None
             if ENV_DEBUG_MODE:
                 print('(_reset)self.viewer Cleared!')
@@ -130,13 +134,11 @@ class Primal2Env(MAPFEnv):
                     if self.world.agents[agentID].action_history[-1] == 0:  # standing still on goal
                         freeze_list.append(agentID)
                     self.world.agents[agentID].freeze += 1
-                    print('OneShot',self.world.agents[agentID].freeze)
                 else:
                     if self.world.state[newPos] == 0:
                         self.world.state[newPos] = 0
                     self.world.agents[agentID].status = 2  # status=2 means done and removed from the env
                     self.world.goals_map[newPos] = 0
-                    print('NotOneShot',self.world.agents[agentID].freeze)
 
         # agent reward
         for agentID in range(1, self.num_agents + 1):

@@ -53,7 +53,7 @@ class ACNet:
             self.value_loss    = 0.1 * tf.reduce_mean(self.train_value*tf.square(self.target_v - tf.reshape(self.value, shape=[-1])))
             self.entropy       = - tf.reduce_mean(self.policy * tf.log(tf.clip_by_value(self.policy,1e-10,1.0)))
             self.policy_loss   = -0.5 * tf.reduce_mean(tf.log(tf.clip_by_value(self.responsible_outputs,1e-15,1.0)) * self.advantages)
-            self.valid_loss    = -16 * tf.reduce_mean(tf.log(tf.clip_by_value(self.valids,1e-10,1.0)) *\
+            self.valid_loss    = -8 * tf.reduce_mean(tf.log(tf.clip_by_value(self.valids,1e-10,1.0)) *\
                                 self.train_valids * self.train_valid +tf.log(tf.clip_by_value(1-self.valids,1e-10,1.0)) * (1-self.train_valid))
             self.blocking_loss = - tf.reduce_mean(self.target_blockings*tf.log(tf.clip_by_value(self.blocking,1e-10,1.0))\
                                       +(1-self.target_blockings)*tf.log(tf.clip_by_value(1-self.blocking,1e-10,1.0)))
@@ -64,7 +64,7 @@ class ACNet:
                             - self.entropy * 0.01 +0.5*self.blocking_loss
             # self.imitation_loss        = 0.5 * self.value_loss + self.policy_loss + 0.5*self.valid_loss - self.entropy * 0.01 +.5*self.blocking_loss
             # self.imitation_loss = tf.reduce_mean(tf.contrib.keras.backend.categorical_crossentropy(self.optimal_actions_onehot,self.policy))
-            self.imitation_loss = 0 * self.value_loss + tf.reduce_mean(self.train_imitation * tf.keras.backend.categorical_crossentropy(self.optimal_actions_onehot, self.policy)) \
+            self.imitation_loss = 0 * self.value_loss + 10 * tf.reduce_mean(self.train_imitation * tf.keras.backend.categorical_crossentropy(self.optimal_actions_onehot, self.policy)) \
                                   + 0 * self.mean_goal_loss + 0 * self. message_loss + 0 * self.blocking_loss
             # self.imitation_loss = 0 * self.value_loss + tf.reduce_mean(self.train_imitation * tf.keras.backend.categorical_crossentropy(self.optimal_actions_onehot, self.policy))
             # Get gradients from local network using local losses and

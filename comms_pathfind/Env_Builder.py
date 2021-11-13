@@ -634,7 +634,7 @@ class World:
                 self.state[init_poss[idx][0], init_poss[idx][1]] = agentID
                 self.agents_init_pos.update({agentID: (init_poss[idx][0], init_poss[idx][1])})
             else:
-                print(self.state)
+                # print(self.state)
                 # print(init_poss)
                 raise ValueError('invalid manual_pos for agent' + str(agentID) + ' at: ' + str(init_poss[idx]))
             self.agents[agentID].move(init_poss[idx])
@@ -940,8 +940,11 @@ class World:
             newPos_dict.update({agentID: Assumed_newPos_dict[agentID]})
             not_checked_list.remove(agentID)
         assert not not_checked_list
-        print(status_dict)
-        print(newPos_dict)
+
+        if ENV_DEBUG_MODE:
+            print('((Env_Builder)CheckCollideStatus)',status_dict)
+            print('((Env_Builder)CheckCollideStatus)',newPos_dict)
+
         return status_dict, newPos_dict
 
 

@@ -1,7 +1,7 @@
 import numpy as np
 # is debug
-ENV_DEBUG_MODE              = True
-NN_DEBUG_MODE               = True
+ENV_DEBUG_MODE              = False
+NN_DEBUG_MODE               = False
 
 # Learning parameters
 gamma                   = .95   # discount rate for advantage estimation and reward discounting
@@ -18,9 +18,9 @@ OBS_SIZE                = 11   # the size of the FOV grid to apply to each agent
 NUM_FUTURE_STEPS        = 0
 
 # environment parameters
-ENVIRONMENT_SIZE        = (10, 70) if not ENV_DEBUG_MODE else (15,16)   # the total size of the environment (length of one side) , Starting Point of Curriculum Only
+ENVIRONMENT_SIZE        = (15, 16) if not ENV_DEBUG_MODE else (15,16)   # the total size of the environment (length of one side) , Starting Point of Curriculum Only
 WALL_COMPONENTS         = (3, 21)    # Starting Params of Curriculum = TRUE
-OBSTACLE_DENSITY        = (0.2, 0.7) if not ENV_DEBUG_MODE else (.14, .15)  # range of densities   Starting Params of Curriculum = TRUE
+OBSTACLE_DENSITY        = (0.14, 0.15) if not ENV_DEBUG_MODE else (.14, .15)  # range of densities   Starting Params of Curriculum = TRUE
 
 DIAG_MVMT               = False  # Diagonal movements allowed?
 a_size                  = 5 + int(DIAG_MVMT) * 4
@@ -31,7 +31,7 @@ NUM_THREADS             = 6 # int(multiprocessing.cpu_count() / (2 * NUM_META_AG
 NUM_BUFFERS             = 1 # NO EXPERIENCE REPLAY int(NUM_THREADS / 2)
 
 # training parameters
-SUMMARY_WINDOW          = 10
+SUMMARY_WINDOW          = 1
 load_model              = False
 RESET_TRAINER           = False
 training_version        = 'log/astar3_continuous_0.5IL_ray2_00'

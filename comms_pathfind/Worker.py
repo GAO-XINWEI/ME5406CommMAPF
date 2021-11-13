@@ -34,6 +34,9 @@ class Worker():
         self.perf_metrics = None
         self.allGradients = []
 
+    def __del__(self):
+        print('((worker)__del__)meta{0}worker{1}'.format(self.metaAgentID,self.agentID))
+
     def calculateImitationGradient(self, rollout, episode_count): # todo: check rollout
         rollout = np.array(rollout, dtype=object)
         # we calculate the loss differently for imitation
@@ -196,6 +199,7 @@ class Worker():
             # self.imitation_learning_only()
 
         global episode_lengths, episode_mean_values, episode_invalid_ops, episode_stop_ops, episode_rewards, episode_finishes
+        # print('episode_mean_values', episode_lengths)
 
         num_agents = self.num_workers
 
@@ -220,7 +224,7 @@ class Worker():
                 self.synchronize()  # synchronize starting time of the threads
                 if NN_DEBUG_MODE:
                     print('(Worker-RL)self.synchronize(1b) meta:{0}, worker{1}'.format(self.metaAgentID, self.agentID))
-                print('there it is')
+
                 # Get Information For Each Agent
                 validActions = self.env.listValidActions(self.agentID, joint_observations[self.metaAgentID][self.agentID])
 
@@ -360,6 +364,7 @@ class Worker():
                             self.loss_metrics, grads = self.calculateGradient(train_buffer, s1Value, episode_count, rnn_state0)
 
                             self.allGradients.append(grads)
+
 
                             rnn_state0 = rnn_state
 
