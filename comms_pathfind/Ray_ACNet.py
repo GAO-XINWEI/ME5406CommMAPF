@@ -190,7 +190,7 @@ class ACNet:
         blocking     = layers.fully_connected(inputs=self.rnn_out, num_outputs=1, weights_initializer=normalized_columns_initializer(1.0), biases_initializer=None, activation_fn=tf.sigmoid)
         # on_goal      = layers.fully_connected(inputs=self.rnn_out, num_outputs=1, weights_initializer=normalized_columns_initializer(1.0), biases_initializer=None, activation_fn=tf.sigmoid)
         mean_goal    = layers.fully_connected(inputs=self.rnn_out, num_outputs=2, weights_initializer=normalized_columns_initializer(1.0/float(2)), biases_initializer=None, activation_fn=tf.sigmoid)
-        message_layer= layers.fully_connected(inputs=self.rnn_out, num_outputs=1, weights_initializer=normalized_columns_initializer(1.0), biases_initializer=None, activation_fn=None)
-        message      = tf.nn.softmax(message_layer)
+        message= layers.fully_connected(inputs=self.rnn_out, num_outputs=1, weights_initializer=normalized_columns_initializer(1.0), biases_initializer=None, activation_fn=tf.sigmoid)
+        # message      = tf.nn.softmax(message_layer)
 
         return policy, value, state_out ,state_in, state_init, blocking, mean_goal, message, policy_sig
