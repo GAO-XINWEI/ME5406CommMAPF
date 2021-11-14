@@ -71,6 +71,9 @@ class Runner(object):
         self.weightSetters = [tf.placeholder(shape=w.shape, dtype=tf.float32) for w in weights]
         self.set_weights_ops = [var.assign(w) for var, w in zip(self.weightVars, self.weightSetters)]
 
+    def __del__(self):
+        print('((Runner)__del__)meta:{}'.format(self.metaAgentID))
+
     def set_weights(self, weights):
         feed_dict = {
             self.weightSetters[i]: w for i, w in enumerate(weights)

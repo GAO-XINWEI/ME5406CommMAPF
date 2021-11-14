@@ -79,7 +79,7 @@ class Worker():
                      self.local_AC.train_imitation: (rollout[:, 4]),
                      self.local_AC.target_v       : np.stack(temp_actions),
                      self.local_AC.train_value    : temp_actions,
-                     self.local_AC.advantages     : advantages,
+                     # self.local_AC.advantages     : advantages,
                      self.local_AC.target_meangoals      : np.stack(target_meangoal),
                      self.local_AC.target_blockings      : np.stack(target_block),
                      }
@@ -162,6 +162,7 @@ class Worker():
                                                                 self.local_AC.message_loss,
                                                                 self.local_AC.grads],
                                                                 feed_dict=feed_dict)
+        print('message_loss:', message_l)
 
         return [v_l, p_l, valid_l, e_l, blocking_l, meangoal_l, message_l, g_n, v_n], grads
 

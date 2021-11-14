@@ -31,7 +31,7 @@ NUM_THREADS             = 6 # int(multiprocessing.cpu_count() / (2 * NUM_META_AG
 NUM_BUFFERS             = 1 # NO EXPERIENCE REPLAY int(NUM_THREADS / 2)
 
 # training parameters
-SUMMARY_WINDOW          = 1
+SUMMARY_WINDOW          = 4
 load_model              = False
 RESET_TRAINER           = False
 training_version        = 'log/astar3_continuous_0.5IL_ray2_00'

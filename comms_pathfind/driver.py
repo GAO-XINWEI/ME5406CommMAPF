@@ -101,6 +101,9 @@ def writeToTensorBoard(global_summary, tensorboardData, curr_episode, plotMeans=
     summary.value.add(tag='Losses/Policy Loss', simple_value=policyLoss)
     summary.value.add(tag='Losses/Valid Loss', simple_value=validLoss)
     summary.value.add(tag='Losses/Entropy Loss', simple_value=entropyLoss)
+    summary.value.add(tag='Losses/Blocking Loss', simple_value=blockingLoss)
+    summary.value.add(tag='Losses/Meangoal Loss', simple_value=meangoalLoss)
+    summary.value.add(tag='Losses/Message Loss', simple_value=messageLoss)
     summary.value.add(tag='Losses/Grad Norm', simple_value=gradNorm)
     summary.value.add(tag='Losses/Var Norm', simple_value=varNorm)
 
@@ -210,6 +213,11 @@ def main():
                 weight_names = tf.trainable_variables()
                 weights = sess.run(weight_names)
                 curr_episode += 1
+
+                if info['id'] in range(NUM_IL_META_AGENTS, NUM_META_AGENTS):
+                    meta_agents[info['id']].__del__.remote()
+                    ray.kill(meta_agents[info['id']])
+                    meta_agents[info['id']] = RLRunner.remote(info['id'])
 
                 # start a new job on the recently completed agent with the updated weights
                 jobList.extend([meta_agents[info['id']].job.remote(weights, curr_episode)])
