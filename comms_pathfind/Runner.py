@@ -16,7 +16,8 @@ from Worker import Worker
 
 from parameters import *
 
-
+import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 class Runner(object):
     """Actor object to start running simulation on workers.
@@ -168,14 +169,13 @@ class Runner(object):
         return gradients, mean_imitation_loss, is_imitation
 
     def job(self, global_weights, episodeNumber):
-        print("starting episode {} on metaAgent {}".format(episodeNumber, self.metaAgentID))
+        print("(Runner)metaAgent {0} starting episode {1}".format(self.metaAgentID, episodeNumber))
 
         # set the local weights to the global weight values from the master network
         self.set_weights(global_weights)
 
         # set first `NUM_IL_META_AGENTS` to perform imitation learning
         if self.metaAgentID < NUM_IL_META_AGENTS:
-            print("running imitation job")
             jobResults, metrics, is_imitation = self.imitationLearningJob(episodeNumber)
 
         elif COMPUTE_TYPE == COMPUTE_OPTIONS.multiThreaded:
@@ -198,13 +198,13 @@ class Runner(object):
         return jobResults, metrics, info
 
 
-@ray.remote(num_cpus=3, num_gpus= 1.0 / (NUM_META_AGENTS - NUM_IL_META_AGENTS + 1))
+@ray.remote(num_cpus=16, num_gpus=4)
 class RLRunner(Runner):
     def __init__(self, metaAgentID):
         super().__init__(metaAgentID)
 
 
-@ray.remote(num_cpus=1, num_gpus=0)
+@ray.remote(num_cpus=8, num_gpus=0)
 class imitationRunner(Runner):
     def __init__(self, metaAgentID):
         super().__init__(metaAgentID)

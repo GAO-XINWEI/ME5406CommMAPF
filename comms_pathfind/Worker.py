@@ -477,8 +477,10 @@ class Worker():
             if path is None:  # solution not exists
                 if step_count != 0:
                     return result, 0
-                print('Failed intially')
+                print('(worker)meta{0}worker{1} Failed intially!'.format(self.metaAgentID, self.agentID))
                 return None, 0
+            else:
+                print('(worker)meta{0}worker{1} Success intially!'.format(self.metaAgentID, self.agentID))
             none_on_goal = True  # todo:
             path_step = 1
             while none_on_goal and step_count <= max_episode_length and count_finished < self.num_workers:
@@ -486,7 +488,7 @@ class Worker():
                 goals = []
                 for i in range(self.num_workers):
                     agent_id = i + 1
-                    # if finished[agent_id]:  # todo:
+                    # if finished[agent_id]:
                     #     actions[agent_id] = 0
                     # else:
                     #     next_pos = path[path_step][i]
@@ -497,7 +499,7 @@ class Worker():
                     #         print('(parse_path)pos_buffer', pos_buffer)
                     #         print('(parse_path)goal_buffer', goal_buffer)
                     #         actions[agent_id] = dir2action(diff)
-                    next_pos = path[path_step][i]           # todo
+                    next_pos = path[path_step][i]
                     diff = tuple_minus(next_pos, self.env.world.getPos(agent_id))
                     try:
                         actions[agent_id] = dir2action(diff)

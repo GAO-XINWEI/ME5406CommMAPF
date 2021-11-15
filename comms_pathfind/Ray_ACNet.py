@@ -2,6 +2,8 @@ import tensorflow as tf
 import tensorflow.contrib.layers as layers
 import numpy as np
 
+import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 #parameters for training
 GRAD_CLIP = 10.0
@@ -33,7 +35,6 @@ class ACNet:
             self.myinput = tf.transpose(self.inputs, perm=[0,2,3,1])
             self.policy, self.value, self.state_out, self.state_in, self.state_init, self.blocking, self.mean_goal, self.message, self.valids = self._build_net(
                 self.myinput, self.goal_pos, RNN_SIZE, TRAINING, a_size)
-            # print('INputs of NET', self.myinput, self.goal_pos)
         if TRAINING:
             self.actions                = tf.placeholder(shape=[None], dtype=tf.int32)
             self.actions_onehot         = tf.one_hot(self.actions, a_size, dtype=tf.float32)
@@ -62,10 +63,9 @@ class ACNet:
             # self.mean_goal_loss = - tf.reduce_mean(self.target_meangoals * tf.log(tf.clip_by_value(self.mean_goal, 1e-10, 1.0)) \
             #                           + (1 - self.target_meangoals) * tf.log(tf.clip_by_value(1 - self.mean_goal, 1e-10, 1.0)))
             self.blocking_loss = 2 * tf.reduce_mean(self.train_value*tf.square(self.target_blockings - tf.reshape(self.blocking, shape=[-1])))
-            # self.mean_goal_loss = 2 * tf.keras.losses.MSE()
             self.mean_goal_loss = 0.5 * tf.reduce_mean(self.train_value*(tf.square(self.target_meangoals[:,0] - self.mean_goal[:,0])+tf.square(self.target_meangoals[:,1] - self.mean_goal[:,1])))
             # self.message_loss = - tf.reduce_mean(self. advantages * tf.log(tf.clip_by_value(self.message, 1e-10, 1.0)))  ## todo: debug
-            self.message_loss   = -8. * tf.reduce_mean(tf.log(tf.clip_by_value(self.message, 1e-10, 1.0)))
+            self.message_loss   = - 2. * tf.reduce_mean(tf.log(tf.clip_by_value(self.message, 1e-10, 1.0)))
             self.loss          = self.value_loss + self.policy_loss + 0.1 * self.mean_goal_loss +  0.1*self.blocking_loss + self.message_loss + 0.5*self.valid_loss \
                             - self.entropy * 0.01
             # self.imitation_loss        = 0.5 * self.value_loss + self.policy_loss + 0.5*self.valid_loss - self.entropy * 0.01 +.5*self.blocking_loss
@@ -149,7 +149,7 @@ class ACNet:
         conv2    =  layers.conv2d(inputs=pool1,    padding="SAME", num_outputs=RNN_SIZE//2, kernel_size=[3, 3],   stride=1, data_format="NHWC", weights_initializer=w_init,activation_fn=tf.nn.relu)
         conv2a   =  layers.conv2d(inputs=conv2,    padding="SAME", num_outputs=RNN_SIZE//2, kernel_size=[3, 3],   stride=1, data_format="NHWC", weights_initializer=w_init,activation_fn=tf.nn.relu)
         conv2b   =  layers.conv2d(inputs=conv2a,    padding="SAME", num_outputs=RNN_SIZE//2, kernel_size=[3, 3],   stride=1, data_format="NHWC", weights_initializer=w_init,activation_fn=tf.nn.relu)
-        pool2    =  layers.max_pool2d(inputs=conv2b,kernel_size=[2,2])
+        pool2    =  layers.max_pool2d(inputs=conv2b,kernel_size=[3,3])
         conv3    =  layers.conv2d(inputs=pool2,    padding="VALID", num_outputs=RNN_SIZE-GOAL_REPR_SIZE, kernel_size=[2, 2],   stride=1, data_format="NHWC", weights_initializer=w_init,activation_fn=None)
 
         # conv3 = layers.conv2d(inputs=vgg2, padding="VALID", num_outputs=RNN_SIZE - GOAL_REPR_SIZE, kernel_size=[2, 2],
@@ -192,7 +192,7 @@ class ACNet:
         blocking     = layers.fully_connected(inputs=self.rnn_out, num_outputs=1, weights_initializer=normalized_columns_initializer(1.0), biases_initializer=None, activation_fn=tf.sigmoid)
         # on_goal      = layers.fully_connected(inputs=self.rnn_out, num_outputs=1, weights_initializer=normalized_columns_initializer(1.0), biases_initializer=None, activation_fn=tf.sigmoid)
         mean_goal    = layers.fully_connected(inputs=self.rnn_out, num_outputs=2, weights_initializer=normalized_columns_initializer(1.0/float(2)), biases_initializer=None, activation_fn=tf.sigmoid)
-        message= layers.fully_connected(inputs=self.rnn_out, num_outputs=1, weights_initializer=normalized_columns_initializer(1.0), biases_initializer=None, activation_fn=tf.sigmoid)
-        # message      = tf.nn.softmax(message_layer)
+        message     = layers.fully_connected(inputs=self.rnn_out, num_outputs=1, weights_initializer=normalized_columns_initializer(1.0), biases_initializer=None, activation_fn=tf.sigmoid)
+        # message      = tf.nn.sigmoid(message_layer)
 
         return policy, value, state_out ,state_in, state_init, blocking, mean_goal, message, policy_sig

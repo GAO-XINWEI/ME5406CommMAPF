@@ -10,7 +10,7 @@ from parameters import *
 import random
 
 
-ray.init(num_gpus=1)
+ray.init(num_gpus=4)
 
 
 tf.reset_default_graph()
@@ -19,7 +19,7 @@ print("Hello World")
 config = tf.ConfigProto(allow_soft_placement=True)
 config.gpu_options.per_process_gpu_memory_fraction = 1.0 / (NUM_META_AGENTS - NUM_IL_META_AGENTS + 1)
 config.gpu_options.allow_growth = True
-
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
 
@@ -60,14 +60,14 @@ def writeEpisodeRatio(global_summary, numIL, numRL, sess, curr_episode):
 
     current_learning_rate = sess.run(lr, feed_dict={global_step: curr_episode})
 
-    RL_IL_Ratio = numRL / (numRL + numIL)
+    RL_IL_Ratio = numRL / (numRL + numIL + 1)
+
     summary.value.add(tag='Perf/Num IL Ep.', simple_value=numIL)
     summary.value.add(tag='Perf/Num RL Ep.', simple_value=numRL)
     summary.value.add(tag='Perf/ RL IL ratio Ep.', simple_value=RL_IL_Ratio)
     summary.value.add(tag='Perf/Learning Rate', simple_value=current_learning_rate)
     global_summary.add_summary(summary, curr_episode)
     global_summary.flush()
-
 
 
 def writeToTensorBoard(global_summary, tensorboardData, curr_episode, plotMeans=True):
