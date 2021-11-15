@@ -2,6 +2,7 @@ import tensorflow as tf
 import tensorflow.contrib.layers as layers
 import numpy as np
 
+
 #parameters for training
 GRAD_CLIP = 10.0
 KEEP_PROB1 = 1  # was 0.5
@@ -32,7 +33,7 @@ class ACNet:
             self.myinput = tf.transpose(self.inputs, perm=[0,2,3,1])
             self.policy, self.value, self.state_out, self.state_in, self.state_init, self.blocking, self.mean_goal, self.message, self.valids = self._build_net(
                 self.myinput, self.goal_pos, RNN_SIZE, TRAINING, a_size)
-            print('INputs of NET', self.myinput, self.goal_pos)
+            # print('INputs of NET', self.myinput, self.goal_pos)
         if TRAINING:
             self.actions                = tf.placeholder(shape=[None], dtype=tf.int32)
             self.actions_onehot         = tf.one_hot(self.actions, a_size, dtype=tf.float32)
@@ -61,7 +62,8 @@ class ACNet:
             # self.mean_goal_loss = - tf.reduce_mean(self.target_meangoals * tf.log(tf.clip_by_value(self.mean_goal, 1e-10, 1.0)) \
             #                           + (1 - self.target_meangoals) * tf.log(tf.clip_by_value(1 - self.mean_goal, 1e-10, 1.0)))
             self.blocking_loss = 2 * tf.reduce_mean(self.train_value*tf.square(self.target_blockings - tf.reshape(self.blocking, shape=[-1])))
-            self.mean_goal_loss = 2 * tf.reduce_mean(self.train_value*(tf.square(self.target_meangoals[:,0] - self.mean_goal[:,0])+tf.square(self.target_meangoals[:,1] - self.mean_goal[:,1])))
+            # self.mean_goal_loss = 2 * tf.keras.losses.MSE()
+            self.mean_goal_loss = 0.5 * tf.reduce_mean(self.train_value*(tf.square(self.target_meangoals[:,0] - self.mean_goal[:,0])+tf.square(self.target_meangoals[:,1] - self.mean_goal[:,1])))
             # self.message_loss = - tf.reduce_mean(self. advantages * tf.log(tf.clip_by_value(self.message, 1e-10, 1.0)))  ## todo: debug
             self.message_loss   = -8. * tf.reduce_mean(tf.log(tf.clip_by_value(self.message, 1e-10, 1.0)))
             self.loss          = self.value_loss + self.policy_loss + 0.1 * self.mean_goal_loss +  0.1*self.blocking_loss + self.message_loss + 0.5*self.valid_loss \
