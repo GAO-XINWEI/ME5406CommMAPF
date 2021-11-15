@@ -35,7 +35,8 @@ class Worker():
         self.allGradients = []
 
     def __del__(self):
-        print('((worker)__del__)meta{0}worker{1}'.format(self.metaAgentID,self.agentID))
+        if NN_DEBUG_MODE:
+            print('((worker)__del__)meta{0}worker{1}'.format(self.metaAgentID, self.agentID))
 
     def calculateImitationGradient(self, rollout, episode_count): # todo: check rollout
         rollout = np.array(rollout, dtype=object)
