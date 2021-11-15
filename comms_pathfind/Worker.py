@@ -162,7 +162,6 @@ class Worker():
                                                                 self.local_AC.message_loss,
                                                                 self.local_AC.grads],
                                                                 feed_dict=feed_dict)
-        print('message_loss:', message_l)
 
         return [v_l, p_l, valid_l, e_l, blocking_l, meangoal_l, message_l, g_n, v_n], grads
 
