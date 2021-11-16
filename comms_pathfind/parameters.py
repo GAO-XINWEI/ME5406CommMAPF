@@ -2,7 +2,6 @@ import numpy as np
 # is debug
 ENV_DEBUG_MODE              = False
 NN_DEBUG_MODE               = False
-DEBUG_MODE = False if not ENV_DEBUG_MODE and not NN_DEBUG_MODE else True
 
 # Learning parameters
 gamma                   = .95   # discount rate for advantage estimation and reward discounting
@@ -10,7 +9,7 @@ LR_Q                    = 2.e-5  # 8.e-5 / NUM_THREADS # default: 1e-5
 ADAPT_LR                = True
 ADAPT_COEFF             = 5.e-5  # the coefficient A in LR_Q/sqrt(A*steps+1) for calculating LR
 EXPERIENCE_BUFFER_SIZE  = 256
-max_episode_length      = 128
+max_episode_length      = 64 # was 256
 IL_MAX_EP_LENGTH        = 64
 episode_count           = 0
 
@@ -19,30 +18,31 @@ OBS_SIZE                = 11   # the size of the FOV grid to apply to each agent
 NUM_FUTURE_STEPS        = 0
 
 # environment parameters
-ENVIRONMENT_SIZE        = (32, 32) if not ENV_DEBUG_MODE else (15 ,16)   # the total size of the environment (length of one side) , Starting Point of Curriculum Only
+ENVIRONMENT_SIZE        = (32, 32) if not ENV_DEBUG_MODE else (15,16)   # the total size of the environment (length of one side) , Starting Point of Curriculum Only
 WALL_COMPONENTS         = (3, 21)    # Starting Params of Curriculum = TRUE
 OBSTACLE_DENSITY        = (0.14, 0.15) if not ENV_DEBUG_MODE else (.14, .15)  # range of densities   Starting Params of Curriculum = TRUE
 
 DIAG_MVMT               = False  # Diagonal movements allowed?
 a_size                  = 5 + int(DIAG_MVMT) * 4
-NUM_META_AGENTS         = 8 if not DEBUG_MODE else 2
-NUM_IL_META_AGENTS      = 2 if not DEBUG_MODE else 1
+NUM_META_AGENTS         = 2
+NUM_IL_META_AGENTS      = 1
 
 NUM_THREADS             = 12 # int(multiprocessing.cpu_count() / (2 * NUM_META_AGENTS))
 NUM_BUFFERS             = 1 # NO EXPERIENCE REPLAY int(NUM_THREADS / 2)
 
 # training parameters
-SUMMARY_WINDOW          = 1
+SUMMARY_WINDOW          = 4
 load_model              = False
 RESET_TRAINER           = False
-training_version        = 'log/nov15'
+training_version        = 'log/astar3_continuous_0.5IL_ray2_00'
 model_path              = 'model_' + training_version
 gifs_path               = 'gifs_' + training_version
 train_path              = 'train_' + training_version
-OUTPUT_GIFS             = False  # Only for RL gifs
+OUTPUT_GIFS             = True  # Only for RL gifs
 GIFS_FREQUENCY_RL       = 512
-OUTPUT_IL_GIFS          = False
-IL_GIF_PROB             = 0.
+OUTPUT_IL_GIFS          = True
+IL_GIF_PROB             = 1
+SAVE_IL_GIF             = True
 
 
 # Imitation options
