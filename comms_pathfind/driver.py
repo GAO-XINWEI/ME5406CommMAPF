@@ -17,7 +17,7 @@ tf.reset_default_graph()
 print("Hello World")
 
 config = tf.ConfigProto(allow_soft_placement=True)
-config.gpu_options.per_process_gpu_memory_fraction = 1.0 / (NUM_META_AGENTS - NUM_IL_META_AGENTS + 1)
+config.gpu_options.per_process_gpu_memory_fraction = 4.0 / (NUM_META_AGENTS - NUM_IL_META_AGENTS + 1)
 config.gpu_options.allow_growth = True
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
@@ -143,7 +143,7 @@ def main():
         il_agents = [imitationRunner.remote(i) for i in range(NUM_IL_META_AGENTS)]
         rl_agents = [RLRunner.remote(i) for i in range(NUM_IL_META_AGENTS, NUM_META_AGENTS)]
         meta_agents = il_agents + rl_agents
-
+        runner_counter = np.zeros(NUM_META_AGENTS)
 
 
         # get the initial weights from the global network
@@ -174,6 +174,8 @@ def main():
 
                 # get the results of the task from the object store
                 jobResults, metrics, info = ray.get(done_id)[0]
+
+                runner_counter[info['id']] = runner_counter[info['id']] + 1
 
                 # imitation episodes write different data to tensorboard
                 if info['is_imitation']:
@@ -214,10 +216,24 @@ def main():
                 weights = sess.run(weight_names)
                 curr_episode += 1
 
-                if info['id'] in range(NUM_IL_META_AGENTS, NUM_META_AGENTS):
+                IL_RESET_STEP = 64
+                RL_RESET_STEP = 16
+                if (info['id'] in range(NUM_IL_META_AGENTS)) and (runner_counter[info['id']] >= IL_RESET_STEP):
+                    meta_agents[info['id']].__del__.remote()
+                    ray.kill(meta_agents[info['id']])
+                    meta_agents[info['id']] = imitationRunner.remote(info['id'])
+                    # Counter
+                    runner_counter[info['id']] = 0
+                    print('(Runner)imitationRunner Reset!')
+
+                if (info['id'] in range(NUM_IL_META_AGENTS, NUM_META_AGENTS)) and (
+                        runner_counter[info['id']] >= RL_RESET_STEP):
                     meta_agents[info['id']].__del__.remote()
                     ray.kill(meta_agents[info['id']])
                     meta_agents[info['id']] = RLRunner.remote(info['id'])
+                    # Counter
+                    runner_counter[info['id']] = 0
+                    print('(Runner)RLRunner Reset!')
 
                 # start a new job on the recently completed agent with the updated weights
                 jobList.extend([meta_agents[info['id']].job.remote(weights, curr_episode)])
@@ -228,6 +244,21 @@ def main():
                     saver.save(sess, model_path+'/model-'+str(int(curr_episode))+'.cptk')
                     print ('Saved Model', end='\n')
 
+
+                # # Patch for restart
+                # if numRLEpisodes % 500 == 0:
+                #     il_agents = [imitationRunner.remote(i) for i in range(NUM_IL_META_AGENTS)]
+                #     rl_agents = [RLRunner.remote(i) for i in range(NUM_IL_META_AGENTS, NUM_META_AGENTS)]
+                #     meta_agents = il_agents + rl_agents
+                #     runner_counter = np.zeros(NUM_META_AGENTS)
+                #
+                #     # get the initial weights from the global network
+                #     weight_names = tf.trainable_variables()
+                #     weights = sess.run(weight_names)  # Gets weights in numpy arrays CHECK
+                #
+                #     jobList = []
+                #     for i, meta_agent in enumerate(meta_agents):
+                #         jobList.append(meta_agent.job.remote(weights, curr_episode))
 
 
         except KeyboardInterrupt:

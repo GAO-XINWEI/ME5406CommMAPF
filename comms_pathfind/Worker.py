@@ -35,7 +35,8 @@ class Worker():
         self.allGradients = []
 
     def __del__(self):
-        print('((worker)__del__)meta{0}worker{1}'.format(self.metaAgentID,self.agentID))
+        if NN_DEBUG_MODE:
+            print('((worker)__del__)meta{0}worker{1}'.format(self.metaAgentID, self.agentID))
 
     def calculateImitationGradient(self, rollout, episode_count): # todo: check rollout
         rollout = np.array(rollout, dtype=object)
@@ -79,7 +80,7 @@ class Worker():
                      self.local_AC.train_imitation: (rollout[:, 4]),
                      self.local_AC.target_v       : np.stack(temp_actions),
                      self.local_AC.train_value    : temp_actions,
-                     self.local_AC.advantages     : advantages,
+                     # self.local_AC.advantages     : advantages,
                      self.local_AC.target_meangoals      : np.stack(target_meangoal),
                      self.local_AC.target_blockings      : np.stack(target_block),
                      }
@@ -162,8 +163,6 @@ class Worker():
                                                                 self.local_AC.message_loss,
                                                                 self.local_AC.grads],
                                                                 feed_dict=feed_dict)
-        # print('message_loss:', message_l)
-        # print('message:', feed_dict)
 
         return [v_l, p_l, valid_l, e_l, blocking_l, meangoal_l, message_l, g_n, v_n], grads
 
@@ -259,7 +258,6 @@ class Worker():
                         self.nextGIF = episode_count + GIFS_FREQUENCY_RL
                         GIF_episode = int(episode_count)
                         GIF_frames = [self.env._render()]
-
 
                     # start RL
                     self.env.finished = False
@@ -479,8 +477,10 @@ class Worker():
             if path is None:  # solution not exists
                 if step_count != 0:
                     return result, 0
-                print('Failed intially')
+                print('(worker)meta{0}worker{1} Failed intially!'.format(self.metaAgentID, self.agentID))
                 return None, 0
+            else:
+                print('(worker)meta{0}worker{1} Success intially!'.format(self.metaAgentID, self.agentID))
             none_on_goal = True  # todo:
             path_step = 1
             while none_on_goal and step_count <= max_episode_length and count_finished < self.num_workers:
@@ -488,7 +488,7 @@ class Worker():
                 goals = []
                 for i in range(self.num_workers):
                     agent_id = i + 1
-                    # if finished[agent_id]:  # todo:
+                    # if finished[agent_id]:
                     #     actions[agent_id] = 0
                     # else:
                     #     next_pos = path[path_step][i]
@@ -499,7 +499,7 @@ class Worker():
                     #         print('(parse_path)pos_buffer', pos_buffer)
                     #         print('(parse_path)goal_buffer', goal_buffer)
                     #         actions[agent_id] = dir2action(diff)
-                    next_pos = path[path_step][i]           # todo
+                    next_pos = path[path_step][i]
                     diff = tuple_minus(next_pos, self.env.world.getPos(agent_id))
                     try:
                         actions[agent_id] = dir2action(diff)

@@ -990,7 +990,7 @@ class MAPFEnv(gym.Env):
             self.action_space = spaces.Tuple([spaces.Discrete(self.num_agents), spaces.Discrete(5)])
 
         # self.ACTION_COST, self.GOAL_REWARD, self.COLLISION_REWARD, self.BLOCKING_COST = -0.3, 5., -2., -1.
-        self.ACTION_COST, self.COLLISION_REWARD, self.IDLE_COST, self.BLOCKING_COST = -0.3, -2., -.5, -1.
+        self.ACTION_COST, self.COLLISION_REWARD, self.IDLE_COST, self.BLOCKING_COST = -0.2, -2., -.5, -.5
 
     def getObstacleMap(self):
         return (self.world.state == -1).astype(int)

@@ -56,7 +56,7 @@ class Runner(object):
         else:
             # set up tf session
             config = tf.ConfigProto(allow_soft_placement = True)
-            config.gpu_options.per_process_gpu_memory_fraction = 1.0 / (NUM_META_AGENTS - NUM_IL_META_AGENTS + 1)
+            config.gpu_options.per_process_gpu_memory_fraction = 4.0 / (NUM_META_AGENTS - NUM_IL_META_AGENTS + 1)
             config.gpu_options.allow_growth=True
 
             self.saver = tf.train.Saver(max_to_keep=1)
@@ -198,13 +198,13 @@ class Runner(object):
         return jobResults, metrics, info
 
 
-@ray.remote(num_cpus=16, num_gpus=4)
+@ray.remote(num_cpus=2, num_gpus=4.0 / (NUM_META_AGENTS - NUM_IL_META_AGENTS + 1))
 class RLRunner(Runner):
     def __init__(self, metaAgentID):
         super().__init__(metaAgentID)
 
 
-@ray.remote(num_cpus=8, num_gpus=0)
+@ray.remote(num_cpus=1, num_gpus=0)
 class imitationRunner(Runner):
     def __init__(self, metaAgentID):
         super().__init__(metaAgentID)

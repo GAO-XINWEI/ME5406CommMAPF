@@ -229,6 +229,12 @@ class Primal2Env(MAPFEnv):
         goal = self.world.getGoal(agent_id)
         return True if pos == goal else False
 
+    def calculate_distance(self, agent_id):
+        pos = self.world.getPos(agent_id)
+        goal = self.world.getGoal(agent_id)
+        dis = ((pos[0]-goal[0]) ** 2 + (pos[1]-goal[1]) ** 2) ** 0.5
+        return dis
+
     def give_moving_reward(self, agentID, movement):
         """
         WARNING: ONLY CALL THIS AFTER MOVING AGENTS!
@@ -240,9 +246,11 @@ class Primal2Env(MAPFEnv):
             -1: collision with env (obstacles, out of bound)
             -2: collision with robot, swap
             -3: collision with robot, cell-wise
+
+            self.ACTION_COST, self.COLLISION_REWARD, self.IDLE_COST, self.BLOCKING_COST = -0.2, -2., -.5, -.5.
         """
         # Get the blocking reward
-        blocking_reward = self.get_blocking_num(agentID) * self.BLOCKING_COST
+        blocking_reward = self.individual_blocking[agentID] * self.BLOCKING_COST
 
         # Get the action reward
         action_reward = self.ACTION_COST if movement else 0
@@ -255,7 +263,10 @@ class Primal2Env(MAPFEnv):
         idle_reward = self.IDLE_COST if (not movement and not self.check_on_goal(agentID)) else 0
         self.isStandingOnGoal[agentID] = True if collision_status == 1 else False
 
-        self.individual_rewards[agentID] = blocking_reward + action_reward + collision_reward + idle_reward
+        # get the disgoal reward
+        disgoal_reward = - (self.calculate_distance(agentID) - 5) * 0.005
+
+        self.individual_rewards[agentID] = blocking_reward + action_reward + collision_reward + idle_reward + disgoal_reward
 
         # collision_status = self.world.agents[agentID].status
         # if collision_status == 0:
@@ -434,11 +445,11 @@ if __name__ == '__main__':
     #           [-1, 0, -1, 0, 0, 0, -1],
     #           [-1, 2, -1, 0, 0, 0, -1],
     #           [-1, -1, -1, -1, -1, -1, -1]]
-    n_agents = 8
+    n_agents = 16
     env = Primal2Env(num_agents=n_agents,
                      observer=Primal2Observer(observation_size=5),
-                     map_generator=maze_generator(env_size=(10, 11),
-                                                  wall_components=(5, 10), obstacle_density=(0.1, 0.2)),
+                     map_generator=maze_generator(env_size=(32, 32),
+                                                  wall_components=(5, 10), obstacle_density=(0.12, 0.13)),
                      IsDiagonal=False, isOneShot=True)
     env._reset()
     env._render()
