@@ -56,24 +56,24 @@ class ACNet:
             self.value_loss    = 0.1 * tf.reduce_mean(self.train_value*tf.square(self.target_v - tf.reshape(self.value, shape=[-1])))
             self.entropy       = -0.01 * tf.reduce_mean(self.policy * tf.log(tf.clip_by_value(self.policy,1e-10,1.0)))
             self.policy_loss   = -0.5 * tf.reduce_mean(tf.log(tf.clip_by_value(self.responsible_outputs,1e-15,1.0)) * self.advantages)
-            self.valid_loss    = -2. * tf.reduce_mean(tf.log(tf.clip_by_value(self.valids,1e-10,1.0)) *\
+            self.valid_loss    = -1. * tf.reduce_mean(tf.log(tf.clip_by_value(self.valids,1e-10,1.0)) *\
                                 self.train_valids * self.train_valid +tf.log(tf.clip_by_value(1-self.valids,1e-10,1.0)) * (1-self.train_valid))
             # self.blocking_loss = - tf.reduce_mean(self.target_blockings*tf.log(tf.clip_by_value(self.blocking,1e-10,1.0))\
             #                           +(1-self.target_blockings)*tf.log(tf.clip_by_value(1-self.blocking,1e-10,1.0)))
             # self.mean_goal_loss = - tf.reduce_mean(self.target_meangoals * tf.log(tf.clip_by_value(self.mean_goal, 1e-10, 1.0)) \
             #                           + (1 - self.target_meangoals) * tf.log(tf.clip_by_value(1 - self.mean_goal, 1e-10, 1.0)))
             self.blocking_loss = 0.2 * tf.reduce_mean(self.train_value*tf.square(self.target_blockings - tf.reshape(self.blocking, shape=[-1])))
-            self.mean_goal_loss = 0.005 * tf.reduce_mean(self.train_value*(tf.square(self.target_meangoals[:,0] - self.mean_goal[:,0])+tf.square(self.target_meangoals[:,1] - self.mean_goal[:,1])))
+            self.mean_goal_loss = 0.05 * tf.reduce_mean(self.train_value*(tf.square(self.target_meangoals[:,0] - self.mean_goal[:,0])+tf.square(self.target_meangoals[:,1] - self.mean_goal[:,1])))
             # self.message_loss = - tf.reduce_mean(self. advantages * tf.log(tf.clip_by_value(self.message, 1e-10, 1.0)))
-            self.message_loss   = - 10. * tf.reduce_mean(tf.log(tf.clip_by_value(self.message, 1e-10, 1.0))) # todo advantage
+            self.message_loss   = - 0.4 * tf.reduce_mean(tf.log(tf.clip_by_value(self.message,1e-10,1.0)) * self.advantages)
             self.loss          = self.value_loss + self.policy_loss + self.mean_goal_loss + self.blocking_loss + self.message_loss + self.valid_loss \
                             - self.entropy
             # self.imitation_loss        = 0.5 * self.value_loss + self.policy_loss + 0.5*self.valid_loss - self.entropy * 0.01 +.5*self.blocking_loss
             # self.imitation_loss = tf.reduce_mean(tf.contrib.keras.backend.categorical_crossentropy(self.optimal_actions_onehot,self.policy))
             # self.imitation_loss = 0 * self.value_loss + 10 * tf.reduce_mean(self.train_imitation * tf.keras.backend.categorical_crossentropy(self.optimal_actions_onehot, self.policy)) \
             #                       + 0 * self.mean_goal_loss + 0 * self. message_loss + 0 * self.blocking_loss
-            self.imitation_loss = 0 * self.value_loss + 1 * tf.reduce_mean(self.train_imitation * tf.keras.backend.categorical_crossentropy(self.optimal_actions_onehot, self.policy)) \
-                                  + 0 * self.mean_goal_loss + 0 * self. message_loss + 0 * self.blocking_loss
+            self.imitation_loss = 0. * self.value_loss + 1. * tf.reduce_mean(self.train_imitation * tf.keras.backend.categorical_crossentropy(self.optimal_actions_onehot, self.policy)) \
+                                  + 0. * self.mean_goal_loss + 0. * self. message_loss + 0. * self.blocking_loss
             # self.imitation_loss = 0 * self.value_loss + tf.reduce_mean(self.train_imitation * tf.keras.backend.categorical_crossentropy(self.optimal_actions_onehot, self.policy))
             # Get gradients from local network using local losses and
             # normalize the gradients using clipping
@@ -193,6 +193,5 @@ class ACNet:
         # on_goal      = layers.fully_connected(inputs=self.rnn_out, num_outputs=1, weights_initializer=normalized_columns_initializer(1.0), biases_initializer=None, activation_fn=tf.sigmoid)
         mean_goal    = layers.fully_connected(inputs=self.rnn_out, num_outputs=2, weights_initializer=normalized_columns_initializer(1.0/float(2)), biases_initializer=None, activation_fn=tf.sigmoid)
         message     = layers.fully_connected(inputs=self.rnn_out, num_outputs=1, weights_initializer=normalized_columns_initializer(1.0), biases_initializer=None, activation_fn=tf.sigmoid)
-        # message      = tf.nn.sigmoid(message_layer) # todo softmax
 
         return policy, value, state_out ,state_in, state_init, blocking, mean_goal, message, policy_sig

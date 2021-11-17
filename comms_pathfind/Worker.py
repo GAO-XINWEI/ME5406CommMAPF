@@ -80,7 +80,7 @@ class Worker():
                      self.local_AC.train_imitation: (rollout[:, 4]),
                      self.local_AC.target_v       : np.stack(temp_actions),
                      self.local_AC.train_value    : temp_actions,
-                     # self.local_AC.advantages     : advantages,
+                     self.local_AC.advantages     : advantages,
                      self.local_AC.target_meangoals      : np.stack(target_meangoal),
                      self.local_AC.target_blockings      : np.stack(target_block),
                      }

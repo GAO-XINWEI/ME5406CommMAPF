@@ -445,7 +445,7 @@ if __name__ == '__main__':
     #           [-1, 0, -1, 0, 0, 0, -1],
     #           [-1, 2, -1, 0, 0, 0, -1],
     #           [-1, -1, -1, -1, -1, -1, -1]]
-    n_agents = 16
+    n_agents = 14
     env = Primal2Env(num_agents=n_agents,
                      observer=Primal2Observer(observation_size=5),
                      map_generator=maze_generator(env_size=(32, 32),

@@ -1049,7 +1049,7 @@ class MAPFEnv(gym.Env):
     def listValidActions(self, agent_ID, agent_obs):
         raise NotImplementedError
 
-    def expert_until_first_goal(self, inflation=2.0, time_limit=60.0):
+    def expert_until_first_goal(self, inflation=2.0, time_limit=100.0):
         world = self.getObstacleMap()
         start_positions = []
         goals = []

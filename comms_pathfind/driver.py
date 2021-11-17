@@ -144,6 +144,7 @@ def main():
         rl_agents = [RLRunner.remote(i) for i in range(NUM_IL_META_AGENTS, NUM_META_AGENTS)]
         meta_agents = il_agents + rl_agents
         runner_counter = np.zeros(NUM_META_AGENTS)
+        runner_counter2 = 0
 
 
         # get the initial weights from the global network
@@ -176,6 +177,7 @@ def main():
                 jobResults, metrics, info = ray.get(done_id)[0]
 
                 runner_counter[info['id']] = runner_counter[info['id']] + 1
+                runner_counter2 = runner_counter2 + 1
 
                 # imitation episodes write different data to tensorboard
                 if info['is_imitation']:
@@ -244,21 +246,30 @@ def main():
                     saver.save(sess, model_path+'/model-'+str(int(curr_episode))+'.cptk')
                     print ('Saved Model', end='\n')
 
+                # Patch for restart
+                if runner_counter2 >= 2000:
+                    runner_counter2 = 0
 
-                # # Patch for restart
-                # if numRLEpisodes % 500 == 0:
-                #     il_agents = [imitationRunner.remote(i) for i in range(NUM_IL_META_AGENTS)]
-                #     rl_agents = [RLRunner.remote(i) for i in range(NUM_IL_META_AGENTS, NUM_META_AGENTS)]
-                #     meta_agents = il_agents + rl_agents
-                #     runner_counter = np.zeros(NUM_META_AGENTS)
-                #
-                #     # get the initial weights from the global network
-                #     weight_names = tf.trainable_variables()
-                #     weights = sess.run(weight_names)  # Gets weights in numpy arrays CHECK
-                #
-                #     jobList = []
-                #     for i, meta_agent in enumerate(meta_agents):
-                #         jobList.append(meta_agent.job.remote(weights, curr_episode))
+                    for i in range(NUM_META_AGENTS):
+                        meta_agents[i].__del__.remote()
+                        ray.kill(meta_agents[i])
+                        print('(Driver)Runner Killed!')
+
+                    il_agents = [imitationRunner.remote(i) for i in range(NUM_IL_META_AGENTS)]
+                    rl_agents = [RLRunner.remote(i) for i in range(NUM_IL_META_AGENTS, NUM_META_AGENTS)]
+                    meta_agents = il_agents + rl_agents
+
+                    runner_counter1 = np.zeros(NUM_META_AGENTS)
+
+                    # get the initial weights from the global network
+                    weight_names = tf.trainable_variables()
+                    weights = sess.run(weight_names)  # Gets weights in numpy arrays CHECK
+
+                    jobList = []
+                    for i, meta_agent in enumerate(meta_agents):
+                        jobList.append(meta_agent.job.remote(weights, curr_episode))
+
+                    print('(Driver)ALL Runner Reset!')
 
 
         except KeyboardInterrupt:
