@@ -634,12 +634,12 @@ class World:
                 self.state[init_poss[idx][0], init_poss[idx][1]] = agentID
                 self.agents_init_pos.update({agentID: (init_poss[idx][0], init_poss[idx][1])})
             else:
-                print(self.state)
+                # print(self.state)
                 # print(init_poss)
                 raise ValueError('invalid manual_pos for agent' + str(agentID) + ' at: ' + str(init_poss[idx]))
             self.agents[agentID].move(init_poss[idx])
-            self.agents[agentID].distanceMap = getAstarDistanceMap(self.state, self.agents[agentID].position,
-                                                                   self.agents[agentID].goal_pos)
+            # self.agents[agentID].distanceMap = getAstarDistanceMap(self.state, self.agents[agentID].position,
+            #                                                        self.agents[agentID].goal_pos)
 
     def _put_goals(self, id_list, manual_pos=None):
         """
@@ -758,6 +758,101 @@ class World:
         else:
             return None
 
+    # def CheckCollideStatus(self, movement_dict):
+    #     """
+    #     WARNING: ONLY NON-DIAGONAL IS IMPLEMENTED
+    #     return collision status and predicted next positions, do not move agent directly
+    #     return:
+    #      2: (only in oneShot mode) action not executed, agents has done its target and has been removed from the env.
+    #      1: action executed, and agents standing on its goal.
+    #      0: action executed
+    #     -1: collision with env (obstacles, out of bound)
+    #     -2: collision with robot, swap
+    #     -3: collision with robot, cell-wise
+    #     """
+    #
+    #     # todo: the condition of collision
+    #     if self.isDiagonal is True:
+    #         raise NotImplemented
+    #     Assumed_newPos_dict = {}
+    #     newPos_dict = {}
+    #     status_dict = {agentID: None for agentID in range(1, self.num_agents + 1)}
+    #     not_checked_list = list(range(1, self.num_agents + 1))
+    #
+    #     # detect env collision while creating 'Assumed_newPos_dict'
+    #     for agentID in range(1, self.num_agents + 1):
+    #         direction_vector = action2dir(movement_dict[agentID])
+    #         newPos = tuple_plus(self.getPos(agentID), direction_vector)
+    #         Assumed_newPos_dict.update({agentID: newPos})
+    #         # if collide with the env, back to original position
+    #         if newPos[0] < 0 or newPos[0] > self.state.shape[0] or newPos[1] < 0 \
+    #                 or newPos[1] > self.state.shape[1] or self.state[newPos] == -1:
+    #             status_dict[agentID] = -1
+    #             newPos_dict.update({agentID: self.getPos(agentID)})
+    #             Assumed_newPos_dict[agentID] = self.getPos(agentID)
+    #             not_checked_list.remove(agentID)    # not collide env ones, check other conditions later
+    #
+    #     # detect swap collision
+    #     for agentID in copy.deepcopy(not_checked_list):
+    #         # get the id at that state
+    #         collided_ID = self.state[Assumed_newPos_dict[agentID]]
+    #         if collided_ID != 0 and Assumed_newPos_dict[agentID] != self.getGoal(agentID):  # some one is standing on the assumed pos
+    #             if Assumed_newPos_dict[collided_ID] == self.getPos(agentID):  # he wants to swap
+    #                 if status_dict[agentID] is None:
+    #                     status_dict[agentID] = -2
+    #                     newPos_dict.update({agentID: self.getPos(agentID)})  # stand still
+    #                     Assumed_newPos_dict[agentID] = self.getPos(agentID)
+    #                     not_checked_list.remove(agentID)
+    #                 if status_dict[collided_ID] is None:
+    #                     status_dict[collided_ID] = -2
+    #                     newPos_dict.update({collided_ID: self.getPos(collided_ID)})  # stand still
+    #                     Assumed_newPos_dict[collided_ID] = self.getPos(collided_ID)
+    #                     not_checked_list.remove(collided_ID)
+    #
+    #     # detect cell-wise collision
+    #     for agentID in copy.deepcopy(not_checked_list):
+    #         other_agents_dict = copy.deepcopy(Assumed_newPos_dict)
+    #         other_agents_dict.pop(agentID)
+    #         ignore_goal_agents_dict = copy.deepcopy(newPos_dict)
+    #         for agent in range(1, self.num_agents + 1):
+    #             if agent != agentID:
+    #                 if Assumed_newPos_dict[agent] == self.getGoal(agent):
+    #                     other_agents_dict.pop(agent)
+    #                     try:
+    #                         ignore_goal_agents_dict.pop(agent)
+    #                     except:
+    #                         pass
+    #         if Assumed_newPos_dict[agentID] == self.agents[agentID].goal_pos:
+    #             continue
+    #         if Assumed_newPos_dict[agentID] in ignore_goal_agents_dict.values():
+    #             status_dict[agentID] = -3
+    #             newPos_dict.update({agentID: self.getPos(agentID)})  # stand still
+    #             Assumed_newPos_dict[agentID] = self.getPos(agentID)
+    #             not_checked_list.remove(agentID)
+    #         elif Assumed_newPos_dict[agentID] in other_agents_dict.values():
+    #             other_coming_agents = get_key(Assumed_newPos_dict, Assumed_newPos_dict[agentID])
+    #             other_coming_agents.remove(agentID)
+    #             # if the agentID is the biggest among all other coming agents,
+    #             # allow it to move. Else, let it stand still
+    #             if agentID < min(other_coming_agents):
+    #                 status_dict[agentID] = 1 if Assumed_newPos_dict[agentID] == self.agents[agentID].goal_pos else 0
+    #                 newPos_dict.update({agentID: Assumed_newPos_dict[agentID]})
+    #                 not_checked_list.remove(agentID)
+    #             else:
+    #                 status_dict[agentID] = -3
+    #                 newPos_dict.update({agentID: self.getPos(agentID)})  # stand still
+    #                 Assumed_newPos_dict[agentID] = self.getPos(agentID)
+    #                 not_checked_list.remove(agentID)
+    #
+    #     # the rest are valid actions
+    #     for agentID in copy.deepcopy(not_checked_list):
+    #         status_dict[agentID] = 1 if Assumed_newPos_dict[agentID] == self.agents[agentID].goal_pos else 0
+    #         newPos_dict.update({agentID: Assumed_newPos_dict[agentID]})
+    #         not_checked_list.remove(agentID)
+    #     assert not not_checked_list
+    #
+    #     return status_dict, newPos_dict
+    # Jiawei
     def CheckCollideStatus(self, movement_dict):
         """
         WARNING: ONLY NON-DIAGONAL IS IMPLEMENTED
@@ -766,7 +861,7 @@ class World:
          2: (only in oneShot mode) action not executed, agents has done its target and has been removed from the env.
          1: action executed, and agents standing on its goal.
          0: action executed
-        -1: collision with env (obstacles, out of bound)
+        -1: collision with env (o0bstacles, out of bound)
         -2: collision with robot, swap
         -3: collision with robot, cell-wise
         """
@@ -790,13 +885,13 @@ class World:
                 status_dict[agentID] = -1
                 newPos_dict.update({agentID: self.getPos(agentID)})
                 Assumed_newPos_dict[agentID] = self.getPos(agentID)
-                not_checked_list.remove(agentID)    # not collide env ones, check other conditions later
+                not_checked_list.remove(agentID)  # not collide env ones, check other conditions later
 
         # detect swap collision
         for agentID in copy.deepcopy(not_checked_list):
             # get the id at that state
             collided_ID = self.state[Assumed_newPos_dict[agentID]]
-            if collided_ID != 0 and Assumed_newPos_dict[agentID] != self.getGoal(agentID):  # some one is standing on the assumed pos
+            if collided_ID != 0 and collided_ID != agentID:  # some one is standing on the assumed pos and you can not hit in yourself ##and Assumed_newPos_dict[agentID] != self.getGoal(agentID)
                 if Assumed_newPos_dict[collided_ID] == self.getPos(agentID):  # he wants to swap
                     if status_dict[agentID] is None:
                         status_dict[agentID] = -2
@@ -808,31 +903,26 @@ class World:
                         newPos_dict.update({collided_ID: self.getPos(collided_ID)})  # stand still
                         Assumed_newPos_dict[collided_ID] = self.getPos(collided_ID)
                         not_checked_list.remove(collided_ID)
+                if Assumed_newPos_dict[collided_ID] == self.getPos(collided_ID):  # collided_ID stand still
+                    if status_dict[agentID] is None:
+                        status_dict[agentID] = -2
+                        newPos_dict.update({agentID: self.getPos(agentID)})  # stand still
+                        Assumed_newPos_dict[agentID] = self.getPos(agentID)
+                        not_checked_list.remove(agentID)
+                    if status_dict[collided_ID] is None:
+                        status_dict[collided_ID] = 0
+                        newPos_dict.update({collided_ID: self.getPos(collided_ID)})  # stand still
+                        Assumed_newPos_dict[collided_ID] = self.getPos(collided_ID)
+                        not_checked_list.remove(collided_ID)
 
         # detect cell-wise collision
         for agentID in copy.deepcopy(not_checked_list):
             other_agents_dict = copy.deepcopy(Assumed_newPos_dict)
             other_agents_dict.pop(agentID)
-            ignore_goal_agents_dict = copy.deepcopy(newPos_dict)
-            for agent in range(1, self.num_agents + 1):
-                if agent != agentID:
-                    if Assumed_newPos_dict[agent] == self.getGoal(agent):
-                        other_agents_dict.pop(agent)
-                        try:
-                            ignore_goal_agents_dict.pop(agent)
-                        except:
-                            pass
-            if Assumed_newPos_dict[agentID] == self.agents[agentID].goal_pos:
-                continue
-            if Assumed_newPos_dict[agentID] in ignore_goal_agents_dict.values():
-                status_dict[agentID] = -3
-                newPos_dict.update({agentID: self.getPos(agentID)})  # stand still
-                Assumed_newPos_dict[agentID] = self.getPos(agentID)
-                not_checked_list.remove(agentID)
-            elif Assumed_newPos_dict[agentID] in other_agents_dict.values():
+            if Assumed_newPos_dict[agentID] in other_agents_dict.values():
                 other_coming_agents = get_key(Assumed_newPos_dict, Assumed_newPos_dict[agentID])
                 other_coming_agents.remove(agentID)
-                # if the agentID is the biggest among all other coming agents,
+                # if the agentID is the biggsest among all other coming agents,
                 # allow it to move. Else, let it stand still
                 if agentID < min(other_coming_agents):
                     status_dict[agentID] = 1 if Assumed_newPos_dict[agentID] == self.agents[agentID].goal_pos else 0
@@ -850,6 +940,10 @@ class World:
             newPos_dict.update({agentID: Assumed_newPos_dict[agentID]})
             not_checked_list.remove(agentID)
         assert not not_checked_list
+
+        if ENV_DEBUG_MODE:
+            print('((Env_Builder)CheckCollideStatus)',status_dict)
+            print('((Env_Builder)CheckCollideStatus)',newPos_dict)
 
         return status_dict, newPos_dict
 
@@ -886,7 +980,8 @@ class MAPFEnv(gym.Env):
         self.obs_size = self.observer.observation_size
         self.isStandingOnGoal = {i: False for i in range(1, self.num_agents + 1)}
 
-        self.individual_rewards = {i: 0 for i in range(1, self.num_agents + 1)}
+        self.individual_rewards = {i: 0. for i in range(1, self.num_agents + 1)}
+        self.individual_blocking = {i: 0. for i in range(1, self.num_agents + 1)}
         self.done = False
         self.GIF_frame = []
         if IsDiagonal:
@@ -894,7 +989,8 @@ class MAPFEnv(gym.Env):
         else:
             self.action_space = spaces.Tuple([spaces.Discrete(self.num_agents), spaces.Discrete(5)])
 
-        self.ACTION_COST, self.GOAL_REWARD, self.COLLISION_REWARD = -0.3, 5., -2.
+        # self.ACTION_COST, self.GOAL_REWARD, self.COLLISION_REWARD, self.BLOCKING_COST = -0.3, 5., -2., -1.
+        self.ACTION_COST, self.COLLISION_REWARD, self.IDLE_COST, self.BLOCKING_COST = -0.2, -2., -.5, -.5
 
     def getObstacleMap(self):
         return (self.world.state == -1).astype(int)
@@ -947,13 +1043,13 @@ class MAPFEnv(gym.Env):
     def step_all(self, movement_dict):
         raise NotImplementedError
 
-    def give_moving_reward(self, agentID):
+    def give_moving_reward(self, agentID, movement):
         raise NotImplementedError
 
     def listValidActions(self, agent_ID, agent_obs):
         raise NotImplementedError
 
-    def expert_until_first_goal(self, inflation=2.0, time_limit=180.0):
+    def expert_until_first_goal(self, inflation=2.0, time_limit=100.0):
         world = self.getObstacleMap()
         start_positions = []
         goals = []

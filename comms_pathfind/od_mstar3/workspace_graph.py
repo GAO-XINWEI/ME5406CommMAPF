@@ -86,14 +86,14 @@ diagonal vs non-diagonal move
 
 from od_mstar3.col_set_addition import add_col_set_recursive, add_col_set
 from od_mstar3.col_set_addition import NoSolutionError
-from od_mstar3 import SortedCollection
+import od_mstar3.SortedCollection as SortedCollection
 from collections import defaultdict
 from functools import wraps
-try:
-    import ipdb as pdb
-except ImportError:
-    import pdb
-from od_mstar3 import interface
+#try:
+#    import ipdb as pdb
+#except ImportError:
+#    import pdb
+import od_mstar3.interface as interface
 import math
 
 # Define values delegated to free spaces and spaces with obstacles
@@ -467,7 +467,7 @@ def compute_heuristic_conn_4(init_pos, coord):
 
 
 def Astar_Graph(world_descriptor, goal=None, connect_8=False,
-                diagonal_cost=False, makespan=False, wait_cost=0.):
+                diagonal_cost=False, makespan=False):
     """Wrapper function for returning Astar_Policy objects
 
     Different heuristic functions are given to Astar_Policy object
@@ -485,7 +485,6 @@ def Astar_Graph(world_descriptor, goal=None, connect_8=False,
     diagonal_cost    - boolean, apply DIAGONAL_COST for diagonal costs if True,
                        apply 1 if False
     makespan         - minimize makespan instead of minimizing time
-    wait_cost        - cost of waiting at the goal
     """
     if makespan:
         if connect_8:
@@ -508,13 +507,13 @@ def Astar_Graph(world_descriptor, goal=None, connect_8=False,
         return Astar_Policy(
             world_descriptor,
             lambda x: GridGraphConn8WaitAtGoal(x, goal,
-                                               wait_cost=wait_cost,
+                                               wait_cost=1.0,
                                                diagonal_cost=diagonal_cost,
                                                ),
             goal, h_func)
     return Astar_Policy(world_descriptor,
                         lambda x: GridGraphConn4WaitAtGoal(
-                            x, goal, wait_cost=wait_cost,
+                            x, goal, wait_cost=1.0,
                             diagonal_cost=diagonal_cost),
                         goal, compute_heuristic_conn_4)
 
@@ -1259,7 +1258,7 @@ class Edge_Checker(interface.Planner_Edge_Checker):
         # No collision
         return False
 
-    def col_check(self, c1, recursive, goals):
+    def col_check(self, c1, recursive):
         """Checks for collisions at a single point.  Returns either a M*
         or rM* collision set in the form of sets, depending on the
         setting of recursive.
@@ -1272,7 +1271,7 @@ class Edge_Checker(interface.Planner_Edge_Checker):
             adder = add_col_set_recursive
         for i in range(len(c1) - 1):
             for j in range(i + 1, len(c1)):
-                if c1[i] == c1[j] and not c1[i] == goals[i]:
+                if c1[i] == c1[j]:
                     col_set = adder([frozenset([i, j])], col_set)
         return col_set
 

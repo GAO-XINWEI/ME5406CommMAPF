@@ -177,7 +177,7 @@ def maze_generator(env_size=(10, 70), wall_components=(1, 8), obstacle_density=(
             plt.ion()
             plt.imshow(world)
             plt.ioff()
-            plt.pause(1)
+            # plt.pause(1)
 
         return world, None
 

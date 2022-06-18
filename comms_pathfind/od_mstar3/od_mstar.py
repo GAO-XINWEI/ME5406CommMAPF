@@ -7,18 +7,19 @@ converting everything that can be immutable into an immutable structure
 Intended to support both mstar and rMstar."""
 
 
-from od_mstar3 import workspace_graph
+import od_mstar3.workspace_graph as workspace_graph
 import sys
 import time as timer  # So that we can use the time command in ipython
-from od_mstar3 import SortedCollection
+import od_mstar3.SortedCollection as SortedCollection
 from od_mstar3.col_set_addition import add_col_set_recursive, add_col_set
 from od_mstar3.col_set_addition import effective_col_set
 from od_mstar3.col_set_addition import OutOfTimeError, NoSolutionError, col_set_add
-try:
-    import ipdb as pdb
-except ImportError:
-    # Default to pdb
-    import pdb
+#from itertools import izip # No need since Python3, use global function zip()
+#try:
+#    import ipdb as pdb
+#except ImportError:
+#    # Default to pdb
+#    import pdb
 
 
 MAX_COST = workspace_graph.MAX_COST
@@ -27,7 +28,6 @@ POSITION = 0
 MOVE_TUPLE = 1  # Tuple of destination coordinate tuples for each robot's move
 
 global_move_list = []  # Used for visualization
-
 
 def find_path(obs_map, init_pos, goals, recursive=True, inflation=1.0,
               time_limit=5 * 60.0, astar=False, get_obj=False, connect_8=False,
@@ -314,11 +314,11 @@ class Od_Mstar(object):
             return t_node
         # Need to instantiate the node
         if standard_node:
-            col = self.col_checker.col_check(coord, self.recursive, self.goals)
+            col = self.col_checker.col_check(coord, self.recursive)
         else:
             # Only check for collisions between robots whose move has
             # been determined
-            col = self.col_checker.col_check(coord[MOVE_TUPLE], self.recursive, self.goals)
+            col = self.col_checker.col_check(coord[MOVE_TUPLE], self.recursive)
         free = (len(col) == 0)
         t_node = mstar_node(coord, free, self.recursive, standard_node)
         # Cache the resultant col_set
@@ -611,7 +611,7 @@ class Od_Mstar(object):
             pass_col = self.pass_through(coord, new_coord)
             if pass_col:
                 return [], pass_col
-            col = self.col_checker.col_check(new_coord, self.recursive, self.goals)
+            col = self.col_checker.col_check(new_coord, self.recursive)
             if col:
                 return [], col
             return [new_coord], []
@@ -652,7 +652,7 @@ class Od_Mstar(object):
                     for old in gen_list:
                         new_coord = old + (n, )
                         # Perform collision checking
-                        tcol = self.incremental_col_check(coord, new_coord, self.goals)
+                        tcol = self.incremental_col_check(coord, new_coord)
                         if tcol:
                             col_set = adder(col_set, tcol)
                             continue

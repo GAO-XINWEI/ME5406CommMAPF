@@ -1,0 +1,17 @@
+IL_RESET_STEP = 50
+                RL_RESET_STEP = 10
+                if (info['id'] in range(NUM_IL_META_AGENTS)) and (runner_counter[info['id']] >= IL_RESET_STEP):
+                    meta_agents[info['id']].__del__.remote()
+                    ray.kill(meta_agents[info['id']])
+                    meta_agents[info['id']] = imitationRunner.remote(info['id'])
+                    # Counter
+                    runner_counter[info['id']] = 0
+                    print('(Runner)imitationRunner Reset!')
+
+                if (info['id'] in range(NUM_IL_META_AGENTS, NUM_META_AGENTS)) and (runner_counter[info['id']] >= RL_RESET_STEP):
+                    meta_agents[info['id']].__del__.remote()
+                    ray.kill(meta_agents[info['id']])
+                    meta_agents[info['id']] = RLRunner.remote(info['id'])
+                    # Counter
+                    runner_counter[info['id']] = 0
+                    print('(Runner)RLRunner Reset!')
